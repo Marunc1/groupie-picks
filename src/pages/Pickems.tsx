@@ -25,7 +25,29 @@ const Pickems = () => {
       setUsername(savedUsername);
       setIsUsernameSet(true);
     }
+
+    // Update leaderboard when picks change
+    if (savedTournament && savedUsername && savedPicks.length > 0) {
+      updateLeaderboard(savedTournament, savedPicks, savedUsername);
+    }
   }, []);
+
+  const updateLeaderboard = (tournament: TournamentSettings, picks: UserPick[], username: string) => {
+    let points = 0;
+    let correctPicks = 0;
+
+    picks.forEach(pick => {
+      const match = tournament.matches.find(m => m.id === pick.matchId);
+      if (match?.winner) {
+        if (pick.teamId === match.winner) {
+          points += 10;
+          correctPicks++;
+        }
+      }
+    });
+
+    storage.updateLeaderboard(username, points, correctPicks);
+  };
 
   const handleSetUsername = () => {
     if (!username.trim()) {
@@ -54,6 +76,11 @@ const Pickems = () => {
 
     setUserPicks(newPicks);
     storage.saveUserPicks(newPicks);
+    
+    if (tournament) {
+      updateLeaderboard(tournament, newPicks, username);
+    }
+    
     toast.success('Pick saved!');
   };
 

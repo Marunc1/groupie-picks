@@ -18,6 +18,17 @@ const Admin = () => {
   const [newTeamName, setNewTeamName] = useState('');
   const [newMatchRound, setNewMatchRound] = useState('');
 
+  const teamNames = [
+    'Phoenix Rising', 'Dragon Warriors', 'Shadow Legends', 'Storm Breakers',
+    'Iron Titans', 'Frost Giants', 'Thunder Hawks', 'Crimson Blades',
+    'Silver Wolves', 'Golden Eagles', 'Dark Knights', 'Mystic Guardians',
+    'Flame Serpents', 'Ice Dragons', 'Lightning Lions', 'Steel Panthers',
+    'Emerald Hunters', 'Ruby Raptors', 'Sapphire Sharks', 'Diamond Demons',
+    'Platinum Pirates', 'Crystal Crusaders', 'Obsidian Owls', 'Jade Jaguars',
+    'Onyx Oracles', 'Amber Assassins', 'Pearl Predators', 'Topaz Titans',
+    'Garnet Gladiators', 'Quartz Queens', 'Opal Outlaws', 'Zircon Zealots'
+  ];
+
   useEffect(() => {
     const saved = storage.getTournament();
     if (saved) {
@@ -104,6 +115,68 @@ const Admin = () => {
     });
   };
 
+  const generateTournament = () => {
+    // Create 32 teams
+    const teams: Team[] = teamNames.map((name, index) => ({
+      id: `team_${index + 1}`,
+      name,
+      seed: index + 1,
+    }));
+
+    // Create 4 groups with 8 teams each
+    const groups = [
+      { id: 'A', name: 'Group A', teams: teams.slice(0, 8) },
+      { id: 'B', name: 'Group B', teams: teams.slice(8, 16) },
+      { id: 'C', name: 'Group C', teams: teams.slice(16, 24) },
+      { id: 'D', name: 'Group D', teams: teams.slice(24, 32) },
+    ];
+
+    // Create group stage matches (each team plays others in group)
+    const matches: Match[] = [];
+    let matchId = 1;
+
+    groups.forEach(group => {
+      for (let i = 0; i < group.teams.length; i++) {
+        for (let j = i + 1; j < group.teams.length; j++) {
+          matches.push({
+            id: `match_${matchId++}`,
+            team1: group.teams[i],
+            team2: group.teams[j],
+            round: `${group.name} - Match ${matches.filter(m => m.round.startsWith(group.name)).length + 1}`,
+            bracket: 'upper',
+          });
+        }
+      }
+    });
+
+    // Create knockout stage (16 teams - top 2 from each group)
+    const knockoutRounds = [
+      { name: 'Round of 16', count: 8 },
+      { name: 'Quarter Finals', count: 4 },
+      { name: 'Semi Finals', count: 2 },
+      { name: 'Grand Final', count: 1 },
+    ];
+
+    knockoutRounds.forEach(round => {
+      for (let i = 0; i < round.count; i++) {
+        matches.push({
+          id: `match_${matchId++}`,
+          team1: null,
+          team2: null,
+          round: `${round.name} - Match ${i + 1}`,
+          bracket: round.name === 'Grand Final' ? 'finals' : 'upper',
+        });
+      }
+    });
+
+    saveTournament({
+      ...tournament,
+      teams,
+      groups,
+      matches,
+    });
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
@@ -111,21 +184,30 @@ const Admin = () => {
           <h1 className="text-3xl font-bold mb-2">Admin Panel</h1>
           <p className="text-muted-foreground">Manage tournament settings</p>
         </div>
-        <Button
-          onClick={toggleLock}
-          variant={tournament.isLocked ? "destructive" : "default"}
-          className="gap-2"
-        >
-          {tournament.isLocked ? (
-            <>
-              <Unlock className="w-4 h-4" /> Unlock Pickems
-            </>
-          ) : (
-            <>
-              <Lock className="w-4 h-4" /> Lock Pickems
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={generateTournament}
+            variant="secondary"
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" /> Generate Tournament
+          </Button>
+          <Button
+            onClick={toggleLock}
+            variant={tournament.isLocked ? "destructive" : "default"}
+            className="gap-2"
+          >
+            {tournament.isLocked ? (
+              <>
+                <Unlock className="w-4 h-4" /> Unlock Pickems
+              </>
+            ) : (
+              <>
+                <Lock className="w-4 h-4" /> Lock Pickems
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
