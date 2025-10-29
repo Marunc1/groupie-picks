@@ -18,6 +18,12 @@ export interface Group {
   id: string;
   name: string;
   teams: Team[];
+  advancingTeams?: string[]; // Team IDs that actually advanced (set by admin)
+}
+
+export interface GroupPick {
+  groupId: string;
+  selectedTeams: string[]; // 2 team IDs
 }
 
 export interface UserPick {
@@ -31,6 +37,7 @@ export interface TournamentSettings {
   groups: Group[];
   matches: Match[];
   teams: Team[];
+  groupPicksEnabled: boolean;
 }
 
 export interface LeaderboardEntry {

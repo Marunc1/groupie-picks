@@ -1,25 +1,30 @@
 import { useEffect, useState } from 'react';
 import { storage } from '@/lib/storage';
-import { TournamentSettings, UserPick } from '@/types/tournament';
-import MatchCard from '@/components/MatchCard';
+import { TournamentSettings, UserPick, GroupPick } from '@/types/tournament';
+import GroupPicker from '@/components/GroupPicker';
+import BracketView from '@/components/BracketView';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { User } from 'lucide-react';
 
 const Pickems = () => {
   const [tournament, setTournament] = useState<TournamentSettings | null>(null);
   const [userPicks, setUserPicks] = useState<UserPick[]>([]);
+  const [groupPicks, setGroupPicks] = useState<GroupPick[]>([]);
   const [username, setUsername] = useState('');
   const [isUsernameSet, setIsUsernameSet] = useState(false);
 
   useEffect(() => {
     const savedTournament = storage.getTournament();
     const savedPicks = storage.getUserPicks();
+    const savedGroupPicks = storage.getGroupPicks();
     const savedUsername = storage.getUsername();
 
     setTournament(savedTournament);
     setUserPicks(savedPicks);
+    setGroupPicks(savedGroupPicks);
     
     if (savedUsername) {
       setUsername(savedUsername);
@@ -27,20 +32,50 @@ const Pickems = () => {
     }
 
     // Update leaderboard when picks change
-    if (savedTournament && savedUsername && savedPicks.length > 0) {
-      updateLeaderboard(savedTournament, savedPicks, savedUsername);
+    if (savedTournament && savedUsername) {
+      updateLeaderboard(savedTournament, savedPicks, savedGroupPicks, savedUsername);
     }
   }, []);
 
-  const updateLeaderboard = (tournament: TournamentSettings, picks: UserPick[], username: string) => {
+  const updateLeaderboard = (
+    tournament: TournamentSettings,
+    picks: UserPick[],
+    gPicks: GroupPick[],
+    username: string
+  ) => {
     let points = 0;
     let correctPicks = 0;
 
+    // Calculate group picks points
+    gPicks.forEach(pick => {
+      const group = tournament.groups.find(g => g.id === pick.groupId);
+      if (group?.advancingTeams) {
+        pick.selectedTeams.forEach(teamId => {
+          if (group.advancingTeams?.includes(teamId)) {
+            points += 5;
+            correctPicks++;
+          }
+        });
+      }
+    });
+
+    // Calculate bracket picks points
     picks.forEach(pick => {
       const match = tournament.matches.find(m => m.id === pick.matchId);
       if (match?.winner) {
         if (pick.teamId === match.winner) {
-          points += 10;
+          const roundPoints = {
+            'Round of 16': 10,
+            'Quarter': 20,
+            'Semi': 30,
+            'Final': 50,
+          };
+          
+          const matchPoints = Object.entries(roundPoints).find(([key]) => 
+            match.round.includes(key)
+          )?.[1] || 10;
+          
+          points += matchPoints;
           correctPicks++;
         }
       }
@@ -78,10 +113,35 @@ const Pickems = () => {
     storage.saveUserPicks(newPicks);
     
     if (tournament) {
-      updateLeaderboard(tournament, newPicks, username);
+      updateLeaderboard(tournament, newPicks, groupPicks, username);
     }
     
     toast.success('Pick saved!');
+  };
+
+  const handleGroupPick = (groupId: string, teamIds: string[]) => {
+    if (tournament?.isLocked) {
+      toast.error('Pickems are locked!');
+      return;
+    }
+
+    const newPicks = [...groupPicks];
+    const existingPickIndex = newPicks.findIndex(p => p.groupId === groupId);
+
+    if (existingPickIndex >= 0) {
+      newPicks[existingPickIndex].selectedTeams = teamIds;
+    } else {
+      newPicks.push({ groupId, selectedTeams: teamIds });
+    }
+
+    setGroupPicks(newPicks);
+    storage.saveGroupPicks(newPicks);
+    
+    if (tournament) {
+      updateLeaderboard(tournament, userPicks, newPicks, username);
+    }
+    
+    toast.success('Group pick saved!');
   };
 
   if (!isUsernameSet) {
@@ -115,13 +175,16 @@ const Pickems = () => {
     );
   }
 
-  if (!tournament || tournament.matches.length === 0) {
+  if (!tournament || (tournament.groups.length === 0 && tournament.matches.length === 0)) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <p className="text-muted-foreground">No tournament configured yet. Check admin panel.</p>
       </div>
     );
   }
+
+  const hasGroups = tournament.groups.length > 0;
+  const hasMatches = tournament.matches.length > 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -139,17 +202,56 @@ const Pickems = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tournament.matches.map((match) => (
-          <MatchCard
-            key={match.id}
-            match={match}
-            userPick={userPicks.find(p => p.matchId === match.id)}
-            onPickTeam={handlePickTeam}
-            isLocked={tournament.isLocked}
-          />
-        ))}
-      </div>
+      {hasGroups && hasMatches ? (
+        <Tabs defaultValue="groups" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="groups">Group Stage</TabsTrigger>
+            <TabsTrigger value="bracket">Knockout Stage</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="groups">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {tournament.groups.map((group) => (
+                <GroupPicker
+                  key={group.id}
+                  group={group}
+                  groupPick={groupPicks.find(p => p.groupId === group.id)}
+                  onPickTeam={handleGroupPick}
+                  isLocked={tournament.isLocked}
+                />
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="bracket">
+            <BracketView
+              matches={tournament.matches}
+              userPicks={userPicks}
+              onPickTeam={handlePickTeam}
+              isLocked={tournament.isLocked}
+            />
+          </TabsContent>
+        </Tabs>
+      ) : hasGroups ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {tournament.groups.map((group) => (
+            <GroupPicker
+              key={group.id}
+              group={group}
+              groupPick={groupPicks.find(p => p.groupId === group.id)}
+              onPickTeam={handleGroupPick}
+              isLocked={tournament.isLocked}
+            />
+          ))}
+        </div>
+      ) : (
+        <BracketView
+          matches={tournament.matches}
+          userPicks={userPicks}
+          onPickTeam={handlePickTeam}
+          isLocked={tournament.isLocked}
+        />
+      )}
     </div>
   );
 };

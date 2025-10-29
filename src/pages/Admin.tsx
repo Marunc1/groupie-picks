@@ -4,6 +4,7 @@ import { TournamentSettings, Team, Match } from '@/types/tournament';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Lock, Unlock, Plus, Trash2 } from 'lucide-react';
 
@@ -13,6 +14,7 @@ const Admin = () => {
     groups: [],
     matches: [],
     teams: [],
+    groupPicksEnabled: true,
   });
 
   const [newTeamName, setNewTeamName] = useState('');
@@ -123,33 +125,22 @@ const Admin = () => {
       seed: index + 1,
     }));
 
-    // Create 4 groups with 8 teams each
+    // Create 8 groups with 4 teams each
     const groups = [
-      { id: 'A', name: 'Group A', teams: teams.slice(0, 8) },
-      { id: 'B', name: 'Group B', teams: teams.slice(8, 16) },
-      { id: 'C', name: 'Group C', teams: teams.slice(16, 24) },
-      { id: 'D', name: 'Group D', teams: teams.slice(24, 32) },
+      { id: 'A', name: 'Group A', teams: teams.slice(0, 4) },
+      { id: 'B', name: 'Group B', teams: teams.slice(4, 8) },
+      { id: 'C', name: 'Group C', teams: teams.slice(8, 12) },
+      { id: 'D', name: 'Group D', teams: teams.slice(12, 16) },
+      { id: 'E', name: 'Group E', teams: teams.slice(16, 20) },
+      { id: 'F', name: 'Group F', teams: teams.slice(20, 24) },
+      { id: 'G', name: 'Group G', teams: teams.slice(24, 28) },
+      { id: 'H', name: 'Group H', teams: teams.slice(28, 32) },
     ];
 
-    // Create group stage matches (each team plays others in group)
+    // Create knockout stage (16 teams)
     const matches: Match[] = [];
     let matchId = 1;
 
-    groups.forEach(group => {
-      for (let i = 0; i < group.teams.length; i++) {
-        for (let j = i + 1; j < group.teams.length; j++) {
-          matches.push({
-            id: `match_${matchId++}`,
-            team1: group.teams[i],
-            team2: group.teams[j],
-            round: `${group.name} - Match ${matches.filter(m => m.round.startsWith(group.name)).length + 1}`,
-            bracket: 'upper',
-          });
-        }
-      }
-    });
-
-    // Create knockout stage (16 teams - top 2 from each group)
     const knockoutRounds = [
       { name: 'Round of 16', count: 8 },
       { name: 'Quarter Finals', count: 4 },
@@ -174,6 +165,18 @@ const Admin = () => {
       teams,
       groups,
       matches,
+      groupPicksEnabled: true,
+    });
+  };
+
+  const setGroupAdvancingTeams = (groupId: string, team1Id: string, team2Id: string) => {
+    const advancingTeams = [team1Id, team2Id].filter(Boolean);
+    
+    saveTournament({
+      ...tournament,
+      groups: tournament.groups.map(g =>
+        g.id === groupId ? { ...g, advancingTeams } : g
+      ),
     });
   };
 
@@ -210,8 +213,73 @@ const Admin = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+      <div className="grid gap-6">
+        {/* Groups Section */}
+        {tournament.groups.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Groups - Set Advancing Teams</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {tournament.groups.map((group) => (
+                  <div key={group.id} className="p-4 rounded-lg bg-muted space-y-3">
+                    <h3 className="font-semibold">{group.name}</h3>
+                    <div className="space-y-2">
+                      <Select
+                        value={group.advancingTeams?.[0] || ''}
+                        onValueChange={(value) => {
+                          setGroupAdvancingTeams(
+                            group.id,
+                            value,
+                            group.advancingTeams?.[1] || ''
+                          );
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="1st Place" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {group.teams.map(team => (
+                            <SelectItem key={team.id} value={team.id}>
+                              {team.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Select
+                        value={group.advancingTeams?.[1] || ''}
+                        onValueChange={(value) => {
+                          setGroupAdvancingTeams(
+                            group.id,
+                            group.advancingTeams?.[0] || '',
+                            value
+                          );
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="2nd Place" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {group.teams.map(team => (
+                            <SelectItem key={team.id} value={team.id}>
+                              {team.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Matches Section */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
           <CardHeader>
             <CardTitle>Teams</CardTitle>
           </CardHeader>
@@ -320,6 +388,7 @@ const Admin = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
-import { TournamentSettings, UserPick, LeaderboardEntry } from '@/types/tournament';
+import { TournamentSettings, UserPick, LeaderboardEntry, GroupPick } from '@/types/tournament';
 
 const STORAGE_KEYS = {
   TOURNAMENT: 'pickems_tournament',
   USER_PICKS: 'pickems_user_picks',
   USERNAME: 'pickems_username',
   LEADERBOARD: 'pickems_leaderboard',
+  GROUP_PICKS: 'pickems_group_picks',
 };
 
 export const storage = {
@@ -55,5 +56,14 @@ export const storage = {
     
     leaderboard.sort((a, b) => b.points - a.points);
     storage.saveLeaderboard(leaderboard);
+  },
+
+  getGroupPicks: (): GroupPick[] => {
+    const data = localStorage.getItem(STORAGE_KEYS.GROUP_PICKS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveGroupPicks: (picks: GroupPick[]) => {
+    localStorage.setItem(STORAGE_KEYS.GROUP_PICKS, JSON.stringify(picks));
   },
 };
