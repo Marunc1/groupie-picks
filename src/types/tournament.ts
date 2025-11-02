@@ -33,11 +33,13 @@ export interface UserPick {
 }
 
 export interface TournamentSettings {
-  isLocked: boolean;
   groups: Group[];
   matches: Match[];
   teams: Team[];
-  groupPicksEnabled: boolean;
+  groupStageEnabled: boolean;
+  knockoutStageEnabled: boolean;
+  groupStageLocked: boolean;
+  knockoutStageLocked: boolean;
 }
 
 export interface LeaderboardEntry {
