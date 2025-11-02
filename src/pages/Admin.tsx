@@ -33,6 +33,8 @@ const Admin = () => {
 
   const [newTeamName, setNewTeamName] = useState('');
   const [newMatchRound, setNewMatchRound] = useState('');
+  const [newGroupName, setNewGroupName] = useState('');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   const teamNames = [
     'Phoenix Rising', 
@@ -233,6 +235,50 @@ const Admin = () => {
     });
   };
 
+  const addGroup = () => {
+    if (!newGroupName.trim()) return;
+
+    const newGroup = {
+      id: `group_${Date.now()}`,
+      name: newGroupName,
+      teams: [],
+    };
+
+    saveTournament({
+      ...tournament,
+      groups: [...tournament.groups, newGroup],
+    });
+    setNewGroupName('');
+  };
+
+  const removeGroup = (groupId: string) => {
+    saveTournament({
+      ...tournament,
+      groups: tournament.groups.filter(g => g.id !== groupId),
+    });
+  };
+
+  const addTeamToGroup = (groupId: string, teamId: string) => {
+    const team = tournament.teams.find(t => t.id === teamId);
+    if (!team) return;
+
+    saveTournament({
+      ...tournament,
+      groups: tournament.groups.map(g =>
+        g.id === groupId ? { ...g, teams: [...g.teams, team] } : g
+      ),
+    });
+  };
+
+  const removeTeamFromGroup = (groupId: string, teamId: string) => {
+    saveTournament({
+      ...tournament,
+      groups: tournament.groups.map(g =>
+        g.id === groupId ? { ...g, teams: g.teams.filter(t => t.id !== teamId) } : g
+      ),
+    });
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     toast.success('Deconectat cu succes!');
@@ -330,68 +376,142 @@ const Admin = () => {
       </div>
 
       <div className="grid gap-6">
-        {/* Groups Section */}
-        {tournament.groups.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Groups - Set Advancing Teams</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {tournament.groups.map((group) => (
-                  <div key={group.id} className="p-4 rounded-lg bg-muted space-y-3">
-                    <h3 className="font-semibold">{group.name}</h3>
-                    <div className="space-y-2">
-                      <Select
-                        value={group.advancingTeams?.[0] || ''}
-                        onValueChange={(value) => {
-                          setGroupAdvancingTeams(
-                            group.id,
-                            value,
-                            group.advancingTeams?.[1] || ''
-                          );
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="1st Place" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {group.teams.map(team => (
-                            <SelectItem key={team.id} value={team.id}>
-                              {team.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+        {/* Groups Management Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Groups Management</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Add New Group */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Group name (e.g., Group A)"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addGroup()}
+                />
+                <Button onClick={addGroup}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
 
-                      <Select
-                        value={group.advancingTeams?.[1] || ''}
-                        onValueChange={(value) => {
-                          setGroupAdvancingTeams(
-                            group.id,
-                            group.advancingTeams?.[0] || '',
-                            value
-                          );
-                        }}
+              {/* Groups List */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {tournament.groups.map((group) => (
+                  <div key={group.id} className="p-4 rounded-lg border bg-card space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-lg">{group.name}</h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeGroup(group.id)}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="2nd Place" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {group.teams.map(team => (
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    {/* Teams in this group */}
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">Teams in group:</p>
+                      {group.teams.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic">No teams yet</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {group.teams.map((team) => (
+                            <div key={team.id} className="flex items-center justify-between p-2 rounded bg-muted">
+                              <span className="text-sm">{team.name}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeTeamFromGroup(group.id, team.id)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Add team to group */}
+                    <Select
+                      value=""
+                      onValueChange={(teamId) => {
+                        addTeamToGroup(group.id, teamId);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Add team to group" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tournament.teams
+                          .filter(team => !group.teams.some(t => t.id === team.id))
+                          .map(team => (
                             <SelectItem key={team.id} value={team.id}>
                               {team.name}
                             </SelectItem>
                           ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Set advancing teams */}
+                    {group.teams.length >= 2 && (
+                      <>
+                        <p className="text-sm text-muted-foreground pt-2">Set advancing teams:</p>
+                        <div className="space-y-2">
+                          <Select
+                            value={group.advancingTeams?.[0] || ''}
+                            onValueChange={(value) => {
+                              setGroupAdvancingTeams(
+                                group.id,
+                                value,
+                                group.advancingTeams?.[1] || ''
+                              );
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="1st Place" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {group.teams.map(team => (
+                                <SelectItem key={team.id} value={team.id}>
+                                  {team.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          <Select
+                            value={group.advancingTeams?.[1] || ''}
+                            onValueChange={(value) => {
+                              setGroupAdvancingTeams(
+                                group.id,
+                                group.advancingTeams?.[0] || '',
+                                value
+                              );
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="2nd Place" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {group.teams.map(team => (
+                                <SelectItem key={team.id} value={team.id}>
+                                  {team.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Matches Section */}
         <div className="grid gap-6 md:grid-cols-2">
