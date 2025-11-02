@@ -12,11 +12,13 @@ import { Lock, Unlock, Plus, Trash2, LogOut } from 'lucide-react';
 const Admin = () => {
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<TournamentSettings>({
-    isLocked: false,
     groups: [],
     matches: [],
     teams: [],
-    groupPicksEnabled: true,
+    groupStageEnabled: false,
+    knockoutStageEnabled: false,
+    groupStageLocked: false,
+    knockoutStageLocked: false,
   });
 
   useEffect(() => {
@@ -80,8 +82,20 @@ const Admin = () => {
     toast.success('Tournament updated!');
   };
 
-  const toggleLock = () => {
-    saveTournament({ ...tournament, isLocked: !tournament.isLocked });
+  const toggleGroupStage = () => {
+    saveTournament({ ...tournament, groupStageEnabled: !tournament.groupStageEnabled });
+  };
+
+  const toggleKnockoutStage = () => {
+    saveTournament({ ...tournament, knockoutStageEnabled: !tournament.knockoutStageEnabled });
+  };
+
+  const toggleGroupStageLock = () => {
+    saveTournament({ ...tournament, groupStageLocked: !tournament.groupStageLocked });
+  };
+
+  const toggleKnockoutStageLock = () => {
+    saveTournament({ ...tournament, knockoutStageLocked: !tournament.knockoutStageLocked });
   };
 
   const addTeam = () => {
@@ -201,7 +215,10 @@ const Admin = () => {
       teams,
       groups,
       matches,
-      groupPicksEnabled: true,
+      groupStageEnabled: false,
+      knockoutStageEnabled: false,
+      groupStageLocked: false,
+      knockoutStageLocked: false,
     });
   };
 
@@ -229,28 +246,13 @@ const Admin = () => {
           <h1 className="text-3xl font-bold mb-2">Admin Panel</h1>
           <p className="text-muted-foreground">Manage tournament settings</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             onClick={generateTournament}
             variant="secondary"
             className="gap-2"
           >
             <Plus className="w-4 h-4" /> Generate Tournament
-          </Button>
-          <Button
-            onClick={toggleLock}
-            variant={tournament.isLocked ? "destructive" : "default"}
-            className="gap-2"
-          >
-            {tournament.isLocked ? (
-              <>
-                <Unlock className="w-4 h-4" /> Unlock Pickems
-              </>
-            ) : (
-              <>
-                <Lock className="w-4 h-4" /> Lock Pickems
-              </>
-            )}
           </Button>
           <Button
             onClick={handleLogout}
@@ -260,6 +262,71 @@ const Admin = () => {
             <LogOut className="w-4 h-4" /> Logout
           </Button>
         </div>
+      </div>
+
+      {/* Stage Controls */}
+      <div className="grid gap-4 md:grid-cols-2 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Group Stage Controls</CardTitle>
+          </CardHeader>
+          <CardContent className="flex gap-2">
+            <Button
+              onClick={toggleGroupStage}
+              variant={tournament.groupStageEnabled ? "default" : "outline"}
+              className="flex-1"
+            >
+              {tournament.groupStageEnabled ? 'Enabled' : 'Disabled'}
+            </Button>
+            <Button
+              onClick={toggleGroupStageLock}
+              variant={tournament.groupStageLocked ? "destructive" : "secondary"}
+              className="flex-1 gap-2"
+              disabled={!tournament.groupStageEnabled}
+            >
+              {tournament.groupStageLocked ? (
+                <>
+                  <Unlock className="w-4 h-4" /> Unlock
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4" /> Lock
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Knockout Stage Controls</CardTitle>
+          </CardHeader>
+          <CardContent className="flex gap-2">
+            <Button
+              onClick={toggleKnockoutStage}
+              variant={tournament.knockoutStageEnabled ? "default" : "outline"}
+              className="flex-1"
+            >
+              {tournament.knockoutStageEnabled ? 'Enabled' : 'Disabled'}
+            </Button>
+            <Button
+              onClick={toggleKnockoutStageLock}
+              variant={tournament.knockoutStageLocked ? "destructive" : "secondary"}
+              className="flex-1 gap-2"
+              disabled={!tournament.knockoutStageEnabled}
+            >
+              {tournament.knockoutStageLocked ? (
+                <>
+                  <Unlock className="w-4 h-4" /> Unlock
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4" /> Lock
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-6">

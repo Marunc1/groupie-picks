@@ -95,8 +95,8 @@ const Pickems = () => {
   };
 
   const handlePickTeam = (matchId: string, teamId: string) => {
-    if (tournament?.isLocked) {
-      toast.error('Pickems are locked!');
+    if (tournament?.knockoutStageLocked) {
+      toast.error('Knockout stage is locked!');
       return;
     }
 
@@ -120,8 +120,8 @@ const Pickems = () => {
   };
 
   const handleGroupPick = (groupId: string, teamIds: string[]) => {
-    if (tournament?.isLocked) {
-      toast.error('Pickems are locked!');
+    if (tournament?.groupStageLocked) {
+      toast.error('Group stage is locked!');
       return;
     }
 
@@ -183,8 +183,8 @@ const Pickems = () => {
     );
   }
 
-  const hasGroups = tournament.groups.length > 0;
-  const hasMatches = tournament.matches.length > 0;
+  const showGroups = tournament.groupStageEnabled && tournament.groups.length > 0;
+  const showKnockout = tournament.knockoutStageEnabled && tournament.matches.length > 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -194,15 +194,22 @@ const Pickems = () => {
             <h1 className="text-3xl font-bold mb-2">Make Your Picks</h1>
             <p className="text-muted-foreground">Logged in as: {username}</p>
           </div>
-          {tournament.isLocked && (
-            <div className="px-4 py-2 rounded-lg bg-primary/20 border border-primary">
-              <span className="text-primary font-semibold">🔒 Locked</span>
-            </div>
-          )}
+          <div className="flex gap-2">
+            {tournament.groupStageLocked && showGroups && (
+              <div className="px-4 py-2 rounded-lg bg-primary/20 border border-primary">
+                <span className="text-primary font-semibold">🔒 Groups Locked</span>
+              </div>
+            )}
+            {tournament.knockoutStageLocked && showKnockout && (
+              <div className="px-4 py-2 rounded-lg bg-primary/20 border border-primary">
+                <span className="text-primary font-semibold">🔒 Knockout Locked</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {hasGroups && hasMatches ? (
+      {showGroups && showKnockout ? (
         <Tabs defaultValue="groups" className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="groups">Group Stage</TabsTrigger>
@@ -217,7 +224,7 @@ const Pickems = () => {
                   group={group}
                   groupPick={groupPicks.find(p => p.groupId === group.id)}
                   onPickTeam={handleGroupPick}
-                  isLocked={tournament.isLocked}
+                  isLocked={tournament.groupStageLocked}
                 />
               ))}
             </div>
@@ -228,11 +235,11 @@ const Pickems = () => {
               matches={tournament.matches}
               userPicks={userPicks}
               onPickTeam={handlePickTeam}
-              isLocked={tournament.isLocked}
+              isLocked={tournament.knockoutStageLocked}
             />
           </TabsContent>
         </Tabs>
-      ) : hasGroups ? (
+      ) : showGroups ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {tournament.groups.map((group) => (
             <GroupPicker
@@ -240,17 +247,21 @@ const Pickems = () => {
               group={group}
               groupPick={groupPicks.find(p => p.groupId === group.id)}
               onPickTeam={handleGroupPick}
-              isLocked={tournament.isLocked}
+              isLocked={tournament.groupStageLocked}
             />
           ))}
         </div>
-      ) : (
+      ) : showKnockout ? (
         <BracketView
           matches={tournament.matches}
           userPicks={userPicks}
           onPickTeam={handlePickTeam}
-          isLocked={tournament.isLocked}
+          isLocked={tournament.knockoutStageLocked}
         />
+      ) : (
+        <div className="text-center text-muted-foreground py-12">
+          <p>No stages are currently enabled. Contact admin.</p>
+        </div>
       )}
     </div>
   );
