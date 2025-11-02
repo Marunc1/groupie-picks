@@ -16,7 +16,7 @@ const Navigation = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <Trophy className="w-6 h-6 text-primary" />
-            <span className="font-bold text-xl">Tournament Pickems</span>
+            <span className="font-bold text-xl">League Of Loolish LOL E3 Pickems</span>
           </div>
           
           <div className="flex gap-1">

@@ -116,9 +116,9 @@ const BracketView = ({ matches, userPicks, onPickTeam, isLocked }: BracketViewPr
           
           {quarters.length > 0 && (
             <>
-              <div className="flex flex-col justify-center gap-[100px]">
+              <div className="flex flex-col justify-center gap-[107px]">
                 {quarters.map((_, i) => (
-                  <div key={i} className="h-[92px] flex items-center">
+                  <div key={i} className="h-[px] flex items-center">
                     <svg width="40" height="92" className="text-border">
                       <line x1="0" y1="23" x2="20" y2="23" stroke="currentColor" strokeWidth="2" />
                       <line x1="0" y1="69" x2="20" y2="69" stroke="currentColor" strokeWidth="2" />
