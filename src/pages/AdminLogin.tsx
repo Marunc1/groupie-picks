@@ -12,7 +12,7 @@ const AdminLogin = () => {
 
   const handleLogin = () => {
     // Simple hash check - pentru securitate reală, folosește Lovable Cloud
-    const adminToken = 'admin2024'; // Schimbă acest token cu unul propriu
+    const adminToken = 'EX*QRT2Mc4EvbBDBWKqU'; // Schimbă acest token cu unul propriu
     
     if (password === adminToken) {
       localStorage.setItem('admin_token', btoa(adminToken));

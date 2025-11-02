@@ -21,7 +21,7 @@ const Admin = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
-    const adminToken = btoa('admin2024');
+    const adminToken = btoa('EX*QRT2Mc4EvbBDBWKqU');
     
     if (token !== adminToken) {
       toast.error('Acces neautorizat!');
@@ -33,14 +33,38 @@ const Admin = () => {
   const [newMatchRound, setNewMatchRound] = useState('');
 
   const teamNames = [
-    'Phoenix Rising', 'Dragon Warriors', 'Shadow Legends', 'Storm Breakers',
-    'Iron Titans', 'Frost Giants', 'Thunder Hawks', 'Crimson Blades',
-    'Silver Wolves', 'Golden Eagles', 'Dark Knights', 'Mystic Guardians',
-    'Flame Serpents', 'Ice Dragons', 'Lightning Lions', 'Steel Panthers',
-    'Emerald Hunters', 'Ruby Raptors', 'Sapphire Sharks', 'Diamond Demons',
-    'Platinum Pirates', 'Crystal Crusaders', 'Obsidian Owls', 'Jade Jaguars',
-    'Onyx Oracles', 'Amber Assassins', 'Pearl Predators', 'Topaz Titans',
-    'Garnet Gladiators', 'Quartz Queens', 'Opal Outlaws', 'Zircon Zealots'
+    'Phoenix Rising', 
+    'Dragon Warriors', 
+    'Shadow Legends', 
+    'Storm Breakers',
+    'Iron Titans', 
+    'Frost Giants', 
+    'Thunder Hawks', 
+    'Crimson Blades',
+    'Silver Wolves', 
+    'Golden Eagles', 
+    'Dark Knights', 
+    'Mystic Guardians',
+    'Flame Serpents', 
+    'Ice Dragons', 
+    'Lightning Lions', 
+    'Steel Panthers',
+    'Emerald Hunters', 
+    'Ruby Raptors', 
+    'Sapphire Sharks', 
+    'Diamond Demons',
+    'Platinum Pirates', 
+    'Crystal Crusaders', 
+    'Obsidian Owls', 
+    'Jade Jaguars',
+    'Onyx Oracles', 
+    'Amber Assassins', 
+    'Pearl Predators', 
+    'Topaz Titans',
+    'Garnet Gladiators', 
+    'Quartz Queens', 
+    'Opal Outlaws', 
+    'Zircon Zealots'
   ];
 
   useEffect(() => {
