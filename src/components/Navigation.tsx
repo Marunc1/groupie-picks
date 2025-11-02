@@ -8,7 +8,6 @@ const Navigation = () => {
   const links = [
     { to: '/', label: 'Pickems', icon: Trophy },
     { to: '/leaderboard', label: 'Leaderboard', icon: Users },
-    { to: '/admin', label: 'Admin', icon: Settings },
   ];
 
   return (

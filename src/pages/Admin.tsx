@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { storage } from '@/lib/storage';
 import { TournamentSettings, Team, Match } from '@/types/tournament';
 import { Button } from '@/components/ui/button';
@@ -6,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Lock, Unlock, Plus, Trash2 } from 'lucide-react';
+import { Lock, Unlock, Plus, Trash2, LogOut } from 'lucide-react';
 
 const Admin = () => {
+  const navigate = useNavigate();
   const [tournament, setTournament] = useState<TournamentSettings>({
     isLocked: false,
     groups: [],
@@ -16,6 +18,16 @@ const Admin = () => {
     teams: [],
     groupPicksEnabled: true,
   });
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    const adminToken = btoa('admin2024');
+    
+    if (token !== adminToken) {
+      toast.error('Acces neautorizat!');
+      navigate('/admin-login');
+    }
+  }, [navigate]);
 
   const [newTeamName, setNewTeamName] = useState('');
   const [newMatchRound, setNewMatchRound] = useState('');
@@ -180,6 +192,12 @@ const Admin = () => {
     });
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    toast.success('Deconectat cu succes!');
+    navigate('/');
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
@@ -209,6 +227,13 @@ const Admin = () => {
                 <Lock className="w-4 h-4" /> Lock Pickems
               </>
             )}
+          </Button>
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="gap-2"
+          >
+            <LogOut className="w-4 h-4" /> Logout
           </Button>
         </div>
       </div>
