@@ -14,16 +14,355 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      group_teams: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          is_advancing: boolean
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          is_advancing?: boolean
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          is_advancing?: boolean
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_teams_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_teams_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          tournament_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          tournament_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          created_at: string
+          id: string
+          match_number: number
+          round: string
+          team1_id: string | null
+          team2_id: string | null
+          tournament_id: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_number: number
+          round: string
+          team1_id?: string | null
+          team2_id?: string | null
+          tournament_id: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_number?: number
+          round?: string
+          team1_id?: string | null
+          team2_id?: string | null
+          tournament_id?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_team1_id_fkey"
+            columns: ["team1_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_team2_id_fkey"
+            columns: ["team2_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          logo: string | null
+          name: string
+          seed: number | null
+          tournament_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logo?: string | null
+          name: string
+          seed?: number | null
+          tournament_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logo?: string | null
+          name?: string
+          seed?: number | null
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments: {
+        Row: {
+          created_at: string
+          group_stage_enabled: boolean
+          group_stage_locked: boolean
+          id: string
+          knockout_stage_enabled: boolean
+          knockout_stage_locked: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          group_stage_enabled?: boolean
+          group_stage_locked?: boolean
+          id?: string
+          knockout_stage_enabled?: boolean
+          knockout_stage_locked?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          group_stage_enabled?: boolean
+          group_stage_locked?: boolean
+          id?: string
+          knockout_stage_enabled?: boolean
+          knockout_stage_locked?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_group_picks: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          team_id: string
+          user_pick_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          team_id: string
+          user_pick_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          team_id?: string
+          user_pick_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_group_picks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_group_picks_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_group_picks_user_pick_id_fkey"
+            columns: ["user_pick_id"]
+            isOneToOne: false
+            referencedRelation: "user_picks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_match_picks: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string
+          picked_team_id: string
+          user_pick_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id: string
+          picked_team_id: string
+          user_pick_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string
+          picked_team_id?: string
+          user_pick_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_match_picks_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_match_picks_picked_team_id_fkey"
+            columns: ["picked_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_match_picks_user_pick_id_fkey"
+            columns: ["user_pick_id"]
+            isOneToOne: false
+            referencedRelation: "user_picks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_picks: {
+        Row: {
+          created_at: string
+          id: string
+          tournament_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tournament_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tournament_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_picks_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: { user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +489,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "viewer"],
+    },
   },
 } as const
