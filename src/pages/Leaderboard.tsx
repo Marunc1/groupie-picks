@@ -1,15 +1,10 @@
-import { useEffect, useState } from 'react';
-import { storage } from '@/lib/storage';
-import { LeaderboardEntry } from '@/types/tournament';
 import { Trophy, Medal, Award } from 'lucide-react';
+import { useTournament } from '@/hooks/useTournament';
+import { useLeaderboard } from '@/hooks/useLeaderboard';
 
 const Leaderboard = () => {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-
-  useEffect(() => {
-    const data = storage.getLeaderboard();
-    setLeaderboard(data);
-  }, []);
+  const { tournament } = useTournament();
+  const { leaderboard, isLoading } = useLeaderboard(tournament?.id);
 
   const getPositionIcon = (position: number) => {
     switch (position) {
@@ -24,17 +19,25 @@ const Leaderboard = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <p>Se încarcă clasamentul...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Leaderboard</h1>
-        <p className="text-muted-foreground">Top performers in the tournament</p>
+        <h1 className="text-3xl font-bold mb-2">Clasament</h1>
+        <p className="text-muted-foreground">Cei mai buni jucători din turneu</p>
       </div>
 
       <div className="max-w-3xl mx-auto">
         {leaderboard.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No entries yet. Make your picks to appear on the leaderboard!
+            Nicio înregistrare încă. Fă-ți alegerile pentru a apărea în clasament!
           </div>
         ) : (
           <div className="space-y-3">
@@ -51,13 +54,13 @@ const Leaderboard = () => {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-lg truncate">{entry.username}</div>
                     <div className="text-sm text-muted-foreground">
-                      {entry.correctPicks} correct picks
+                      {entry.correctPicks} alegeri corecte
                     </div>
                   </div>
                   
                   <div className="text-right">
                     <div className="text-2xl font-bold text-primary">{entry.points}</div>
-                    <div className="text-xs text-muted-foreground">points</div>
+                    <div className="text-xs text-muted-foreground">puncte</div>
                   </div>
                 </div>
               </div>

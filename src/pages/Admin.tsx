@@ -1,40 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { storage } from '@/lib/storage';
-import { TournamentSettings, Team, Match } from '@/types/tournament';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Lock, Unlock, Plus, Trash2, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useTournament } from '@/hooks/useTournament';
+import { useTeams } from '@/hooks/useTeams';
+import { useMatches } from '@/hooks/useMatches';
+import { useGroups } from '@/hooks/useGroups';
 
 const Admin = () => {
   const navigate = useNavigate();
-  const [tournament, setTournament] = useState<TournamentSettings>({
-    groups: [],
-    matches: [],
-    teams: [],
-    groupStageEnabled: false,
-    knockoutStageEnabled: false,
-    groupStageLocked: false,
-    knockoutStageLocked: false,
-  });
-
-  useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    const adminToken = btoa('admin2024');
-    
-    if (token !== adminToken) {
-      toast.error('Acces neautorizat!');
-      navigate('/admin-login');
-    }
-  }, [navigate]);
+  const { isAdmin, loading: authLoading, signOut } = useAuth();
+  const { tournament, isLoading: tournamentLoading, updateTournament } = useTournament();
+  
+  const { teams, addTeam, removeTeam } = useTeams(tournament?.id);
+  const { matches, addMatch, updateMatch, removeMatch } = useMatches(tournament?.id);
+  const { groups, groupTeams, addGroup, removeGroup, addTeamToGroup, removeTeamFromGroup, setAdvancingTeams } = useGroups(tournament?.id);
 
   const [newTeamName, setNewTeamName] = useState('');
   const [newMatchRound, setNewMatchRound] = useState('');
   const [newGroupName, setNewGroupName] = useState('');
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   const teamNames = [
     'Phoenix Rising', 'Dragon Warriors', 'Shadow Legends', 'Storm Breakers',
@@ -48,217 +37,116 @@ const Admin = () => {
   ];
 
   useEffect(() => {
-    const saved = storage.getTournament();
-    if (saved) {
-      setTournament(saved);
+    if (!authLoading && !isAdmin) {
+      toast.error('Acces neautorizat!');
+      navigate('/auth');
     }
-  }, []);
+  }, [isAdmin, authLoading, navigate]);
 
-  const saveTournament = (updated: TournamentSettings) => {
-    storage.saveTournament(updated);
-    setTournament(updated);
-    toast.success('Tournament updated!');
-  };
+  if (authLoading || tournamentLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <p>Se încarcă...</p>
+      </div>
+    );
+  }
 
-  const toggleGroupStage = () => {
-    saveTournament({ ...tournament, groupStageEnabled: !tournament.groupStageEnabled });
-  };
+  if (!tournament) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <p>Nu există niciun turneu. Creează un turneu din setări.</p>
+      </div>
+    );
+  }
 
-  const toggleKnockoutStage = () => {
-    saveTournament({ ...tournament, knockoutStageEnabled: !tournament.knockoutStageEnabled });
-  };
-
-  const toggleGroupStageLock = () => {
-    saveTournament({ ...tournament, groupStageLocked: !tournament.groupStageLocked });
-  };
-
-  const toggleKnockoutStageLock = () => {
-    saveTournament({ ...tournament, knockoutStageLocked: !tournament.knockoutStageLocked });
-  };
-
-  const addTeam = () => {
-    if (!newTeamName.trim()) return;
-    
-    const newTeam: Team = {
-      id: Date.now().toString(),
-      name: newTeamName,
-      seed: tournament.teams.length + 1,
-    };
-
-    saveTournament({
-      ...tournament,
-      teams: [...tournament.teams, newTeam],
-    });
+  const handleAddTeam = () => {
+    if (!newTeamName.trim() || !tournament?.id) return;
+    addTeam({ name: newTeamName, tournamentId: tournament.id });
     setNewTeamName('');
   };
 
-  const removeTeam = (teamId: string) => {
-    saveTournament({
-      ...tournament,
-      teams: tournament.teams.filter(t => t.id !== teamId),
-    });
-  };
-
-  const addMatch = () => {
-    if (!newMatchRound.trim()) return;
-
-    const newMatch: Match = {
-      id: Date.now().toString(),
-      team1: null,
-      team2: null,
-      round: newMatchRound,
-      bracket: 'upper',
-    };
-
-    saveTournament({
-      ...tournament,
-      matches: [...tournament.matches, newMatch],
-    });
+  const handleAddMatch = () => {
+    if (!newMatchRound.trim() || !tournament?.id) return;
+    const matchNumber = matches.length + 1;
+    addMatch({ tournamentId: tournament.id, round: newMatchRound, matchNumber });
     setNewMatchRound('');
   };
 
-  const updateMatchTeam = (matchId: string, position: 'team1' | 'team2', teamId: string) => {
-    const team = tournament.teams.find(t => t.id === teamId);
-    if (!team) return;
-
-    saveTournament({
-      ...tournament,
-      matches: tournament.matches.map(m =>
-        m.id === matchId ? { ...m, [position]: team } : m
-      ),
-    });
-  };
-
-  const setMatchWinner = (matchId: string, winnerId: string) => {
-    saveTournament({
-      ...tournament,
-      matches: tournament.matches.map(m =>
-        m.id === matchId ? { ...m, winner: winnerId } : m
-      ),
-    });
-  };
-
-  const removeMatch = (matchId: string) => {
-    saveTournament({
-      ...tournament,
-      matches: tournament.matches.filter(m => m.id !== matchId),
-    });
-  };
-
-  const generateTournament = () => {
-    // Create 32 teams
-    const teams: Team[] = teamNames.map((name, index) => ({
-      id: `team_${index + 1}`,
-      name,
-      seed: index + 1,
-    }));
-
-    // Create 8 groups with 4 teams each
-    const groups = [
-      { id: 'A', name: 'Group A', teams: teams.slice(0, 4) },
-      { id: 'B', name: 'Group B', teams: teams.slice(4, 8) },
-      { id: 'C', name: 'Group C', teams: teams.slice(8, 12) },
-      { id: 'D', name: 'Group D', teams: teams.slice(12, 16) },
-      { id: 'E', name: 'Group E', teams: teams.slice(16, 20) },
-      { id: 'F', name: 'Group F', teams: teams.slice(20, 24) },
-      { id: 'G', name: 'Group G', teams: teams.slice(24, 28) },
-      { id: 'H', name: 'Group H', teams: teams.slice(28, 32) },
-    ];
-
-    // Create knockout stage (16 teams)
-    const matches: Match[] = [];
-    let matchId = 1;
-
-    const knockoutRounds = [
-      { name: 'Round of 16', count: 8 },
-      { name: 'Quarter Finals', count: 4 },
-      { name: 'Semi Finals', count: 2 },
-      { name: 'Grand Final', count: 1 },
-    ];
-
-    knockoutRounds.forEach(round => {
-      for (let i = 0; i < round.count; i++) {
-        matches.push({
-          id: `match_${matchId++}`,
-          team1: null,
-          team2: null,
-          round: `${round.name} - Match ${i + 1}`,
-          bracket: round.name === 'Grand Final' ? 'finals' : 'upper',
-        });
-      }
-    });
-
-    saveTournament({
-      ...tournament,
-      teams,
-      groups,
-      matches,
-      groupStageEnabled: false,
-      knockoutStageEnabled: false,
-      groupStageLocked: false,
-      knockoutStageLocked: false,
-    });
-  };
-
-  const setGroupAdvancingTeams = (groupId: string, team1Id: string, team2Id: string) => {
-    const advancingTeams = [team1Id, team2Id].filter(Boolean);
-    
-    saveTournament({
-      ...tournament,
-      groups: tournament.groups.map(g =>
-        g.id === groupId ? { ...g, advancingTeams } : g
-      ),
-    });
-  };
-
-  const addGroup = () => {
-    if (!newGroupName.trim()) return;
-
-    const newGroup = {
-      id: `group_${Date.now()}`,
-      name: newGroupName,
-      teams: [],
-    };
-
-    saveTournament({
-      ...tournament,
-      groups: [...tournament.groups, newGroup],
-    });
+  const handleAddGroup = () => {
+    if (!newGroupName.trim() || !tournament?.id) return;
+    addGroup({ name: newGroupName, tournamentId: tournament.id });
     setNewGroupName('');
   };
 
-  const removeGroup = (groupId: string) => {
-    saveTournament({
-      ...tournament,
-      groups: tournament.groups.filter(g => g.id !== groupId),
-    });
+  const handleUpdateMatchTeam = (matchId: string, field: 'team1_id' | 'team2_id', teamId: string) => {
+    updateMatch({ matchId, updates: { [field]: teamId } });
   };
 
-  const addTeamToGroup = (groupId: string, teamId: string) => {
-    const team = tournament.teams.find(t => t.id === teamId);
-    if (!team) return;
-
-    saveTournament({
-      ...tournament,
-      groups: tournament.groups.map(g =>
-        g.id === groupId ? { ...g, teams: [...g.teams, team] } : g
-      ),
-    });
+  const handleSetMatchWinner = (matchId: string, winnerId: string) => {
+    updateMatch({ matchId, updates: { winner_id: winnerId } });
   };
 
-  const removeTeamFromGroup = (groupId: string, teamId: string) => {
-    saveTournament({
-      ...tournament,
-      groups: tournament.groups.map(g =>
-        g.id === groupId ? { ...g, teams: g.teams.filter(t => t.id !== teamId) } : g
-      ),
-    });
+  const handleSetAdvancingTeams = (groupId: string, team1Id: string, team2Id: string) => {
+    const teamIds = [team1Id, team2Id].filter(Boolean);
+    setAdvancingTeams({ groupId, teamIds });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
+  const handleGenerateTournament = async () => {
+    if (!tournament?.id) return;
+
+    // Generate 32 teams
+    toast.info('Se generează turneul...');
+    
+    try {
+      // Add teams
+      for (const name of teamNames) {
+        await addTeam({ name, tournamentId: tournament.id });
+      }
+
+      // Create 8 groups
+      const groupNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      for (const name of groupNames) {
+        await addGroup({ name: `Group ${name}`, tournamentId: tournament.id });
+      }
+
+      // Create knockout matches
+      const knockoutRounds = [
+        { name: 'Round of 16', count: 8 },
+        { name: 'Quarter Finals', count: 4 },
+        { name: 'Semi Finals', count: 2 },
+        { name: 'Grand Final', count: 1 },
+      ];
+
+      let matchNumber = 1;
+      for (const round of knockoutRounds) {
+        for (let i = 0; i < round.count; i++) {
+          await addMatch({
+            tournamentId: tournament.id,
+            round: `${round.name} - Match ${i + 1}`,
+            matchNumber: matchNumber++,
+          });
+        }
+      }
+
+      toast.success('Turneu generat cu succes!');
+    } catch (error) {
+      toast.error('Eroare la generare turneu');
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
     toast.success('Deconectat cu succes!');
     navigate('/');
+  };
+
+  const getTeamsInGroup = (groupId: string) => {
+    const teamIdsInGroup = groupTeams.filter(gt => gt.group_id === groupId).map(gt => gt.team_id);
+    return teams.filter(t => teamIdsInGroup.includes(t.id));
+  };
+
+  const getAdvancingTeamsForGroup = (groupId: string) => {
+    return groupTeams.filter(gt => gt.group_id === groupId && gt.is_advancing).map(gt => gt.team_id);
   };
 
   return (
@@ -266,22 +154,22 @@ const Admin = () => {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold mb-2">Admin Panel</h1>
-          <p className="text-muted-foreground">Manage tournament settings</p>
+          <p className="text-muted-foreground">Gestionează setările turneului</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button
-            onClick={generateTournament}
+            onClick={handleGenerateTournament}
             variant="secondary"
             className="gap-2"
           >
-            <Plus className="w-4 h-4" /> Generate Tournament
+            <Plus className="w-4 h-4" /> Generează Turneu
           </Button>
           <Button
             onClick={handleLogout}
             variant="outline"
             className="gap-2"
           >
-            <LogOut className="w-4 h-4" /> Logout
+            <LogOut className="w-4 h-4" /> Deconectare
           </Button>
         </div>
       </div>
@@ -290,29 +178,29 @@ const Admin = () => {
       <div className="grid gap-4 md:grid-cols-2 mb-6">
         <Card>
           <CardHeader>
-            <CardTitle>Group Stage Controls</CardTitle>
+            <CardTitle>Controlul Fazei de Grupe</CardTitle>
           </CardHeader>
           <CardContent className="flex gap-2">
             <Button
-              onClick={toggleGroupStage}
+              onClick={() => updateTournament({ groupStageEnabled: !tournament.groupStageEnabled })}
               variant={tournament.groupStageEnabled ? "default" : "outline"}
               className="flex-1"
             >
-              {tournament.groupStageEnabled ? 'Enabled' : 'Disabled'}
+              {tournament.groupStageEnabled ? 'Activată' : 'Dezactivată'}
             </Button>
             <Button
-              onClick={toggleGroupStageLock}
+              onClick={() => updateTournament({ groupStageLocked: !tournament.groupStageLocked })}
               variant={tournament.groupStageLocked ? "destructive" : "secondary"}
               className="flex-1 gap-2"
               disabled={!tournament.groupStageEnabled}
             >
               {tournament.groupStageLocked ? (
                 <>
-                  <Unlock className="w-4 h-4" /> Unlock
+                  <Unlock className="w-4 h-4" /> Deblochează
                 </>
               ) : (
                 <>
-                  <Lock className="w-4 h-4" /> Lock
+                  <Lock className="w-4 h-4" /> Blochează
                 </>
               )}
             </Button>
@@ -321,29 +209,29 @@ const Admin = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Knockout Stage Controls</CardTitle>
+            <CardTitle>Controlul Fazei Eliminatorii</CardTitle>
           </CardHeader>
           <CardContent className="flex gap-2">
             <Button
-              onClick={toggleKnockoutStage}
+              onClick={() => updateTournament({ knockoutStageEnabled: !tournament.knockoutStageEnabled })}
               variant={tournament.knockoutStageEnabled ? "default" : "outline"}
               className="flex-1"
             >
-              {tournament.knockoutStageEnabled ? 'Enabled' : 'Disabled'}
+              {tournament.knockoutStageEnabled ? 'Activată' : 'Dezactivată'}
             </Button>
             <Button
-              onClick={toggleKnockoutStageLock}
+              onClick={() => updateTournament({ knockoutStageLocked: !tournament.knockoutStageLocked })}
               variant={tournament.knockoutStageLocked ? "destructive" : "secondary"}
               className="flex-1 gap-2"
               disabled={!tournament.knockoutStageEnabled}
             >
               {tournament.knockoutStageLocked ? (
                 <>
-                  <Unlock className="w-4 h-4" /> Unlock
+                  <Unlock className="w-4 h-4" /> Deblochează
                 </>
               ) : (
                 <>
-                  <Lock className="w-4 h-4" /> Lock
+                  <Lock className="w-4 h-4" /> Blochează
                 </>
               )}
             </Button>
@@ -355,135 +243,132 @@ const Admin = () => {
         {/* Groups Management Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Groups Management</CardTitle>
+            <CardTitle>Gestionare Grupe</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
               {/* Add New Group */}
               <div className="flex gap-2">
                 <Input
-                  placeholder="Group name (e.g., Group A)"
+                  placeholder="Nume grup (ex: Grupa A)"
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addGroup()}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddGroup()}
                 />
-                <Button onClick={addGroup}>
+                <Button onClick={handleAddGroup}>
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
 
               {/* Groups List */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {tournament.groups.map((group) => (
-                  <div key={group.id} className="p-4 rounded-lg border bg-card space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-lg">{group.name}</h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeGroup(group.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                {groups.map((group) => {
+                  const teamsInGroup = getTeamsInGroup(group.id);
+                  const advancingTeamIds = getAdvancingTeamsForGroup(group.id);
+                  
+                  return (
+                    <div key={group.id} className="p-4 rounded-lg border bg-card space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-lg">{group.name}</h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeGroup(group.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
 
-                    {/* Teams in this group */}
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">Teams in group:</p>
-                      {group.teams.length === 0 ? (
-                        <p className="text-sm text-muted-foreground italic">No teams yet</p>
-                      ) : (
-                        <div className="space-y-1">
-                          {group.teams.map((team) => (
-                            <div key={team.id} className="flex items-center justify-between p-2 rounded bg-muted">
-                              <span className="text-sm">{team.name}</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeTeamFromGroup(group.id, team.id)}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
+                      {/* Teams in this group */}
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Echipe în grup:</p>
+                        {teamsInGroup.length === 0 ? (
+                          <p className="text-sm text-muted-foreground italic">Nicio echipă încă</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {teamsInGroup.map((team) => (
+                              <div key={team.id} className="flex items-center justify-between p-2 rounded bg-muted">
+                                <span className="text-sm">{team.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeTeamFromGroup({ groupId: group.id, teamId: team.id })}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add team to group */}
+                      <Select
+                        value=""
+                        onValueChange={(teamId) => {
+                          addTeamToGroup({ groupId: group.id, teamId });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Adaugă echipă în grup" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teams
+                            .filter(team => !teamsInGroup.some(t => t.id === team.id))
+                            .map(team => (
+                              <SelectItem key={team.id} value={team.id}>
+                                {team.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Set advancing teams */}
+                      {teamsInGroup.length >= 2 && (
+                        <>
+                          <p className="text-sm text-muted-foreground pt-2">Setează echipele calificate:</p>
+                          <div className="space-y-2">
+                            <Select
+                              value={advancingTeamIds[0] || ''}
+                              onValueChange={(value) => {
+                                handleSetAdvancingTeams(group.id, value, advancingTeamIds[1] || '');
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Locul 1" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {teamsInGroup.map(team => (
+                                  <SelectItem key={team.id} value={team.id}>
+                                    {team.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            <Select
+                              value={advancingTeamIds[1] || ''}
+                              onValueChange={(value) => {
+                                handleSetAdvancingTeams(group.id, advancingTeamIds[0] || '', value);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Locul 2" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {teamsInGroup.map(team => (
+                                  <SelectItem key={team.id} value={team.id}>
+                                    {team.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
                       )}
                     </div>
-
-                    {/* Add team to group */}
-                    <Select
-                      value=""
-                      onValueChange={(teamId) => {
-                        addTeamToGroup(group.id, teamId);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Add team to group" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tournament.teams
-                          .filter(team => !group.teams.some(t => t.id === team.id))
-                          .map(team => (
-                            <SelectItem key={team.id} value={team.id}>
-                              {team.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-
-                    {/* Set advancing teams */}
-                    {group.teams.length >= 2 && (
-                      <>
-                        <p className="text-sm text-muted-foreground pt-2">Set advancing teams:</p>
-                        <div className="space-y-2">
-                          <Select
-                            value={group.advancingTeams?.[0] || ''}
-                            onValueChange={(value) => {
-                              setGroupAdvancingTeams(
-                                group.id,
-                                value,
-                                group.advancingTeams?.[1] || ''
-                              );
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="1st Place" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {group.teams.map(team => (
-                                <SelectItem key={team.id} value={team.id}>
-                                  {team.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-
-                          <Select
-                            value={group.advancingTeams?.[1] || ''}
-                            onValueChange={(value) => {
-                              setGroupAdvancingTeams(
-                                group.id,
-                                group.advancingTeams?.[0] || '',
-                                value
-                              );
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="2nd Place" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {group.teams.map(team => (
-                                <SelectItem key={team.id} value={team.id}>
-                                  {team.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </CardContent>
@@ -492,114 +377,119 @@ const Admin = () => {
         {/* Matches Section */}
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
-          <CardHeader>
-            <CardTitle>Teams</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Team name"
-                  value={newTeamName}
-                  onChange={(e) => setNewTeamName(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addTeam()}
-                />
-                <Button onClick={addTeam}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                {tournament.teams.map((team) => (
-                  <div key={team.id} className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                    <span>{team.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeTeam(team.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Matches</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Round name (e.g., Quarter Finals)"
-                  value={newMatchRound}
-                  onChange={(e) => setNewMatchRound(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addMatch()}
-                />
-                <Button onClick={addMatch}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-
+            <CardHeader>
+              <CardTitle>Echipe</CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-4">
-                {tournament.matches.map((match) => (
-                  <div key={match.id} className="p-4 rounded-lg bg-muted space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">{match.round}</span>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nume echipă"
+                    value={newTeamName}
+                    onChange={(e) => setNewTeamName(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddTeam()}
+                  />
+                  <Button onClick={handleAddTeam}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {teams.map((team) => (
+                    <div key={team.id} className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                      <span>{team.name}</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeMatch(match.id)}
+                        onClick={() => removeTeam(team.id)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-
-                    <div className="space-y-2">
-                      <select
-                        className="w-full p-2 rounded bg-background border border-border"
-                        value={match.team1?.id || ''}
-                        onChange={(e) => updateMatchTeam(match.id, 'team1', e.target.value)}
-                      >
-                        <option value="">Select Team 1</option>
-                        {tournament.teams.map(team => (
-                          <option key={team.id} value={team.id}>{team.name}</option>
-                        ))}
-                      </select>
-
-                      <select
-                        className="w-full p-2 rounded bg-background border border-border"
-                        value={match.team2?.id || ''}
-                        onChange={(e) => updateMatchTeam(match.id, 'team2', e.target.value)}
-                      >
-                        <option value="">Select Team 2</option>
-                        {tournament.teams.map(team => (
-                          <option key={team.id} value={team.id}>{team.name}</option>
-                        ))}
-                      </select>
-
-                      {match.team1 && match.team2 && (
-                        <select
-                          className="w-full p-2 rounded bg-background border border-border"
-                          value={match.winner || ''}
-                          onChange={(e) => setMatchWinner(match.id, e.target.value)}
-                        >
-                          <option value="">Set Winner</option>
-                          <option value={match.team1.id}>{match.team1.name}</option>
-                          <option value={match.team2.id}>{match.team2.name}</option>
-                        </select>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Meciuri</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Numele rundei (ex: Sferturi)"
+                    value={newMatchRound}
+                    onChange={(e) => setNewMatchRound(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddMatch()}
+                  />
+                  <Button onClick={handleAddMatch}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  {matches.map((match) => {
+                    const team1 = teams.find(t => t.id === match.team1_id);
+                    const team2 = teams.find(t => t.id === match.team2_id);
+
+                    return (
+                      <div key={match.id} className="p-4 rounded-lg bg-muted space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">{match.round}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeMatch(match.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <select
+                            className="w-full p-2 rounded bg-background border border-border"
+                            value={match.team1_id || ''}
+                            onChange={(e) => handleUpdateMatchTeam(match.id, 'team1_id', e.target.value)}
+                          >
+                            <option value="">Selectează Echipa 1</option>
+                            {teams.map(team => (
+                              <option key={team.id} value={team.id}>{team.name}</option>
+                            ))}
+                          </select>
+
+                          <select
+                            className="w-full p-2 rounded bg-background border border-border"
+                            value={match.team2_id || ''}
+                            onChange={(e) => handleUpdateMatchTeam(match.id, 'team2_id', e.target.value)}
+                          >
+                            <option value="">Selectează Echipa 2</option>
+                            {teams.map(team => (
+                              <option key={team.id} value={team.id}>{team.name}</option>
+                            ))}
+                          </select>
+
+                          {team1 && team2 && (
+                            <select
+                              className="w-full p-2 rounded bg-background border border-border"
+                              value={match.winner_id || ''}
+                              onChange={(e) => handleSetMatchWinner(match.id, e.target.value)}
+                            >
+                              <option value="">Setează Câștigătorul</option>
+                              <option value={team1.id}>{team1.name}</option>
+                              <option value={team2.id}>{team2.name}</option>
+                            </select>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
