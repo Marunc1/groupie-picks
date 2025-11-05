@@ -150,14 +150,15 @@ const BracketView: React.FC<BracketViewProps> = ({
   const qSplit = splitHalf(quarters);
   const sSplit = splitHalf(semis);
 
-  const colWidth = 220;
-  const spacingR16 = 20;
-  const spacingQ = 80;
-  const spacingS = 240;
+  const colWidth = 200;
+  const connectorWidth = 50;
+  const spacingR16 = 10;
+  const spacingQ = 90;
+  const spacingS = 270;
   const matchSlotHeight = 80;
-  const semisMatchGap = 240;
-  const semisTotalHeight = matchSlotHeight * 2 + semisMatchGap;
-  const containerHeight = semisTotalHeight + matchSlotHeight;
+  const r16ConnectorHeight = 90;
+  const qConnectorHeight = 270;
+  const sConnectorHeight = 630;
 
   return (
     <div className="w-full overflow-x-auto pb-8">
@@ -181,10 +182,10 @@ const BracketView: React.FC<BracketViewProps> = ({
 
           {quarters.length > 0 && (
             <>
-              <div className="flex flex-col justify-center" style={{ gap: `${100}px` }}>
+              <div className="flex flex-col justify-center" style={{ gap: `${spacingQ + matchSlotHeight}px` }}>
                 {qSplit.left.map((_, i) => (
-                  <div key={i} className="h-[92px] flex items-center">
-                    <ConnectorSVG color={theme.left} width={40} height={92} />
+                  <div key={i} style={{ height: `${r16ConnectorHeight}px` }} className="flex items-center">
+                    <ConnectorSVG color={theme.left} width={connectorWidth} height={r16ConnectorHeight} />
                   </div>
                 ))}
               </div>
@@ -196,10 +197,10 @@ const BracketView: React.FC<BracketViewProps> = ({
 
           {semis.length > 0 && (
             <>
-              <div className="flex flex-col justify-center" style={{ gap: `${260}px` }}>
+              <div className="flex flex-col justify-center" style={{ gap: `${spacingS + matchSlotHeight}px` }}>
                 {sSplit.left.map((_, i) => (
-                  <div key={i} className="h-[252px] flex items-center">
-                    <ConnectorSVG color={theme.left} width={40} height={252} />
+                  <div key={i} style={{ height: `${qConnectorHeight}px` }} className="flex items-center">
+                    <ConnectorSVG color={theme.left} width={connectorWidth} height={qConnectorHeight} />
                   </div>
                 ))}
               </div>
@@ -211,32 +212,18 @@ const BracketView: React.FC<BracketViewProps> = ({
 
           {finals.length > 0 && (
             <>
-              <div className="flex flex-col justify-start" style={{ height: `${containerHeight}px` }}>
-                <div className="h-full flex items-center justify-center">
-                  <svg width="40" height="100%" className="block" viewBox={`0 0 40 ${containerHeight}`} preserveAspectRatio="none">
-                    <line x1="0" y1={semisTotalHeight * 0.25} x2="20" y2={semisTotalHeight * 0.25} stroke={theme.left || theme.neutral} strokeWidth="2" />
-                    <line x1="20" y1={semisTotalHeight * 0.25} x2="20" y2={containerHeight / 2} stroke={theme.left || theme.neutral} strokeWidth="2" />
-                    <line x1="20" y1={containerHeight / 2} x2="40" y2={containerHeight / 2} stroke={theme.left || theme.neutral} strokeWidth="2" />
-                  </svg>
-                </div>
+              <div className="flex items-center" style={{ height: `${sConnectorHeight}px` }}>
+                <ConnectorSVG color={theme.left || theme.neutral} width={connectorWidth} height={sConnectorHeight} />
               </div>
-              <div style={{ width: `${colWidth}px` }} className="flex flex-col items-center justify-start">
-                <div style={{ height: `${containerHeight / 2 - matchSlotHeight / 2}px` }} />
+              <div style={{ width: `${colWidth}px` }} className="flex flex-col items-center justify-center">
                 {finals.map(match => (
                   <div key={match.id} className="relative">
                     {renderMatch(match, isLocked, userPicks, onPickTeam)}
                   </div>
                 ))}
-                <div style={{ height: `${containerHeight / 2 - matchSlotHeight / 2}px` }} />
               </div>
-              <div className="flex flex-col justify-start" style={{ height: `${containerHeight}px` }}>
-                <div className="h-full flex items-center justify-center">
-                  <svg width="40" height="100%" className="block" viewBox={`0 0 40 ${containerHeight}`} preserveAspectRatio="none">
-                    <line x1="40" y1={semisTotalHeight * 0.25} x2="20" y2={semisTotalHeight * 0.25} stroke={theme.right || theme.neutral} strokeWidth="2" />
-                    <line x1="20" y1={semisTotalHeight * 0.25} x2="20" y2={containerHeight / 2} stroke={theme.right || theme.neutral} strokeWidth="2" />
-                    <line x1="0" y1={containerHeight / 2} x2="20" y2={containerHeight / 2} stroke={theme.right || theme.neutral} strokeWidth="2" />
-                  </svg>
-                </div>
+              <div className="flex items-center" style={{ height: `${sConnectorHeight}px` }}>
+                <ConnectorSVG mirrored color={theme.right || theme.neutral} width={connectorWidth} height={sConnectorHeight} />
               </div>
             </>
           )}
@@ -246,10 +233,10 @@ const BracketView: React.FC<BracketViewProps> = ({
               <div style={{ width: `${colWidth}px` }}>
                 {renderRound(sSplit.right, spacingS, isLocked, userPicks, onPickTeam)}
               </div>
-              <div className="flex flex-col justify-center" style={{ gap: `${260}px` }}>
+              <div className="flex flex-col justify-center" style={{ gap: `${spacingS + matchSlotHeight}px` }}>
                 {sSplit.right.map((_, i) => (
-                  <div key={i} className="h-[252px] flex items-center">
-                    <ConnectorSVG mirrored color={theme.right} width={40} height={252} />
+                  <div key={i} style={{ height: `${qConnectorHeight}px` }} className="flex items-center">
+                    <ConnectorSVG mirrored color={theme.right} width={connectorWidth} height={qConnectorHeight} />
                   </div>
                 ))}
               </div>
@@ -261,10 +248,10 @@ const BracketView: React.FC<BracketViewProps> = ({
               <div style={{ width: `${colWidth}px` }}>
                 {renderRound(qSplit.right, spacingQ, isLocked, userPicks, onPickTeam)}
               </div>
-              <div className="flex flex-col justify-center" style={{ gap: `${100}px` }}>
+              <div className="flex flex-col justify-center" style={{ gap: `${spacingQ + matchSlotHeight}px` }}>
                 {qSplit.right.map((_, i) => (
-                  <div key={i} className="h-[92px] flex items-center">
-                    <ConnectorSVG mirrored color={theme.right} width={40} height={92} />
+                  <div key={i} style={{ height: `${r16ConnectorHeight}px` }} className="flex items-center">
+                    <ConnectorSVG mirrored color={theme.right} width={connectorWidth} height={r16ConnectorHeight} />
                   </div>
                 ))}
               </div>
