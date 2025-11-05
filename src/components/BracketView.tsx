@@ -15,108 +15,94 @@ interface BracketViewProps {
   };
 }
 
-const renderTeam = (
-  team: Match['team1'],
-  match: Match,
-  isLocked: boolean,
-  userPicks: UserPick[],
-  onPickTeam: (matchId: string, teamId: string) => void
-) => {
+const MatchBox: React.FC<{
+  match: Match;
+  isLocked: boolean;
+  userPicks: UserPick[];
+  onPickTeam: (matchId: string, teamId: string) => void;
+}> = ({ match, isLocked, userPicks, onPickTeam }) => {
   const userPick = match.id ? userPicks.find(p => p.matchId === match.id) : undefined;
   const showWinner = match.winner;
 
-  if (!team) {
+  const renderTeam = (team: Match['team1'], isTop: boolean) => {
+    if (!team) {
+      return (
+        <div className={cn(
+          "p-2 text-xs text-muted-foreground",
+          isTop ? "border-b border-border" : ""
+        )}>
+          TBD
+        </div>
+      );
+    }
+
+    const isSelected = userPick?.teamId === team.id;
+    const isWinner = match.winner === team.id;
+    const isCorrect = showWinner && isSelected && isWinner;
+    const isWrong = showWinner && isSelected && !isWinner;
+
     return (
-      <div className="p-3 bg-muted/50 rounded-sm border border-border text-muted-foreground text-sm h-10 flex items-center">
-        TBD
-      </div>
+      <button
+        onClick={() => !isLocked && onPickTeam(match.id, team.id)}
+        disabled={isLocked || !team}
+        className={cn(
+          "p-2 text-xs text-left w-full transition-all flex items-center justify-between",
+          "hover:bg-primary/5 disabled:cursor-not-allowed",
+          isTop ? "border-b border-border" : "",
+          isSelected && "bg-primary/10 font-semibold",
+          isCorrect && "bg-secondary/10 text-secondary",
+          isWrong && "bg-destructive/10 text-destructive",
+          isWinner && !isSelected && "bg-secondary/5"
+        )}
+      >
+        <span className="truncate pr-1">{team.name}</span>
+        <div className="flex-shrink-0">
+          {isCorrect && <Check className="w-3 h-3" />}
+          {isWrong && <X className="w-3 h-3" />}
+          {isWinner && !isSelected && <Check className="w-3 h-3 opacity-50" />}
+        </div>
+      </button>
     );
-  }
-
-  const isSelected = userPick?.teamId === team.id;
-  const isWinner = match.winner === team.id;
-  const isCorrect = showWinner && isSelected && isWinner;
-  const isWrong = showWinner && isSelected && !isWinner;
+  };
 
   return (
-    <button
-      onClick={() => !isLocked && onPickTeam(match.id, team.id)}
-      disabled={isLocked || !team}
-      className={cn(
-        "p-3 rounded-sm border transition-all text-left w-full h-10 flex items-center",
-        "hover:border-primary/50 disabled:cursor-not-allowed",
-        isSelected && "border-primary bg-primary/10 font-semibold",
-        !isSelected && "border-border bg-background",
-        isCorrect && "border-secondary bg-secondary/10",
-        isWrong && "border-destructive bg-destructive/10",
-        isWinner && !isSelected && "border-secondary/50 bg-secondary/5"
-      )}
-    >
-      <div className="flex items-center justify-between w-full">
-        <span className="text-sm truncate">{team.name}</span>
-        <div className="flex-shrink-0 ml-2">
-          {isCorrect && <Check className="w-4 h-4 text-secondary" />}
-          {isWrong && <X className="w-4 h-4 text-destructive" />}
-          {isWinner && !isSelected && <Check className="w-4 h-4 text-secondary/50" />}
-        </div>
-      </div>
-    </button>
-  );
-};
-
-const renderMatch = (
-  match: Match,
-  isLocked: boolean,
-  userPicks: UserPick[],
-  onPickTeam: (matchId: string, teamId: string) => void
-) => (
-  <div className="relative flex flex-col gap-0">
-    {renderTeam(match.team1, match, isLocked, userPicks, onPickTeam)}
-    {renderTeam(match.team2, match, isLocked, userPicks, onPickTeam)}
-  </div>
-);
-
-const renderRound = (
-  roundMatches: Match[],
-  spacing: number,
-  isLocked: boolean,
-  userPicks: UserPick[],
-  onPickTeam: (matchId: string, teamId: string) => void
-) => {
-  if (roundMatches.length === 0) return null;
-
-  return (
-    <div className="flex flex-col justify-center" style={{ gap: `${spacing}px` }}>
-      {roundMatches.map((match) => (
-        <div key={match.id} className="relative">
-          {renderMatch(match, isLocked, userPicks, onPickTeam)}
-        </div>
-      ))}
+    <div className="bg-background border border-border rounded w-32 overflow-hidden hover:border-primary/30 transition-colors">
+      {renderTeam(match.team1, true)}
+      {renderTeam(match.team2, false)}
     </div>
   );
 };
 
-const ConnectorSVG: React.FC<{ mirrored?: boolean; color?: string; width?: number; height?: number }> = ({ 
-  mirrored = false, 
-  color = 'hsl(var(--border))', 
-  width = 40, 
-  height = 120 
-}) => {
-  const transform = mirrored ? `scale(-1,1)` : undefined;
-  const centerY = height / 2;
-  const x1 = 0;
-  const x2 = width * 0.45;
-  const x3 = width;
-  const y1 = centerY - (height * 0.25);
-  const y2 = centerY + (height * 0.25);
+const BracketConnector: React.FC<{
+  height: number;
+  color?: string;
+  mirrored?: boolean;
+}> = ({ height, color = 'hsl(var(--border))', mirrored = false }) => {
+  const width = 30;
+  const midY = height / 2;
+  const topY = height * 0.25;
+  const bottomY = height * 0.75;
+  const midX = width / 2;
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block" preserveAspectRatio="none">
-      <g transform={transform} style={{ transformOrigin: 'center' }}>
-        <path d={`M ${x1} ${y1} L ${x2} ${y1} L ${x2} ${centerY}`} stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" />
-        <path d={`M ${x1} ${y2} L ${x2} ${y2} L ${x2} ${centerY}`} stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" />
-        <path d={`M ${x2} ${centerY} L ${x3} ${centerY}`} stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" />
-      </g>
+    <svg width={width} height={height} className="block">
+      {mirrored ? (
+        <>
+          <line x1={width} y1={topY} x2={midX} y2={topY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={topY} x2={midX} y2={midY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={midY} x2={midX} y2={bottomY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={bottomY} x2={width} y2={bottomY} stroke={color} strokeWidth="1.5" />
+          <line x1={0} y1={midY} x2={midX} y2={midY} stroke={color} strokeWidth="1.5" />
+        </>
+      ) : (
+        <>
+          <line x1={0} y1={topY} x2={midX} y2={topY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={topY} x2={midX} y2={midY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={midY} x2={midX} y2={bottomY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={bottomY} x2={0} y2={bottomY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={midY} x2={width} y2={midY} stroke={color} strokeWidth="1.5" />
+        </>
+      )}
     </svg>
   );
 };
@@ -151,118 +137,85 @@ const BracketView: React.FC<BracketViewProps> = ({
   const qSplit = splitHalf(quarters);
   const sSplit = splitHalf(semis);
 
-  const colWidth = 200;
-  const connectorWidth = 50;
-  const spacingR16 = 10;
-  const spacingQ = 90;
-  const spacingS = 270;
-  const matchSlotHeight = 80;
-  const r16ConnectorHeight = 90;
-  const qConnectorHeight = 270;
-  const sConnectorHeight = 630;
+  const renderRoundColumn = (roundMatches: Match[], gap: number) => {
+    if (roundMatches.length === 0) return null;
+    return (
+      <div className="flex flex-col justify-center" style={{ gap: `${gap}px` }}>
+        {roundMatches.map((match) => (
+          <MatchBox
+            key={match.id}
+            match={match}
+            isLocked={isLocked}
+            userPicks={userPicks}
+            onPickTeam={onPickTeam}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const renderConnectors = (count: number, height: number, gap: number, color: string, mirrored: boolean = false) => {
+    return (
+      <div className="flex flex-col justify-center" style={{ gap: `${gap}px` }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} style={{ height: `${height}px` }} className="flex items-center">
+            <BracketConnector height={height} color={color} mirrored={mirrored} />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const matchHeight = 48;
+  const r16Gap = 10;
+  const quarterGap = matchHeight * 2 + r16Gap * 2 + 10;
+  const semiGap = matchHeight * 4 + quarterGap * 2 + 10;
+  const r16ConnectorHeight = matchHeight * 2 + r16Gap;
+  const quarterConnectorHeight = matchHeight * 4 + quarterGap + r16Gap * 2;
+  const semiConnectorHeight = matchHeight * 8 + semiGap + quarterGap * 2;
 
   return (
     <div className="w-full overflow-x-auto pb-8">
-      <div className="min-w-max">
-        <div className="flex gap-4 mb-6 items-center">
-          <div style={{ width: `${colWidth}px` }} className="text-center">
-            {roundOf16.length > 0 && <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Round of 16</h3>}
-          </div>
-          {quarters.length > 0 && <div style={{ width: `${colWidth}px` }} className="text-center"><h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Quarter Finals</h3></div>}
-          {semis.length > 0 && <div style={{ width: `${colWidth}px` }} className="text-center"><h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Semi Finals</h3></div>}
-          {finals.length > 0 && <div style={{ width: `${colWidth}px` }} className="text-center"><h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Grand Final</h3></div>}
-          {semis.length > 0 && <div style={{ width: `${colWidth}px` }} className="text-center"><h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Semi Finals</h3></div>}
-          {quarters.length > 0 && <div style={{ width: `${colWidth}px` }} className="text-center"><h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Quarter Finals</h3></div>}
-          {roundOf16.length > 0 && <div style={{ width: `${colWidth}px` }} className="text-center"><h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Round of 16</h3></div>}
-        </div>
+      <div className="min-w-max flex items-center justify-center gap-0 p-8">
+        {r16Split.left.length > 0 && renderRoundColumn(r16Split.left, r16Gap)}
 
-        <div className="flex gap-4 items-start px-4">
-          <div style={{ width: `${colWidth}px` }}>
-            {renderRound(r16Split.left, spacingR16, isLocked, userPicks, onPickTeam)}
-          </div>
+        {qSplit.left.length > 0 && (
+          <>
+            {renderConnectors(qSplit.left.length, r16ConnectorHeight, quarterGap, theme.left || theme.neutral)}
+            {renderRoundColumn(qSplit.left, quarterGap)}
+          </>
+        )}
 
-          {quarters.length > 0 && (
-            <>
-              <div className="flex flex-col justify-center" style={{ gap: `${spacingQ + matchSlotHeight}px` }}>
-                {qSplit.left.map((_, i) => (
-                  <div key={i} style={{ height: `${r16ConnectorHeight}px` }} className="flex items-center">
-                    <ConnectorSVG color={theme.left} width={connectorWidth} height={r16ConnectorHeight} />
-                  </div>
-                ))}
-              </div>
-              <div style={{ width: `${colWidth}px` }}>
-                {renderRound(qSplit.left, spacingQ, isLocked, userPicks, onPickTeam)}
-              </div>
-            </>
-          )}
+        {sSplit.left.length > 0 && (
+          <>
+            {renderConnectors(sSplit.left.length, quarterConnectorHeight, semiGap, theme.left || theme.neutral)}
+            {renderRoundColumn(sSplit.left, semiGap)}
+          </>
+        )}
 
-          {semis.length > 0 && (
-            <>
-              <div className="flex flex-col justify-center" style={{ gap: `${spacingS + matchSlotHeight}px` }}>
-                {sSplit.left.map((_, i) => (
-                  <div key={i} style={{ height: `${qConnectorHeight}px` }} className="flex items-center">
-                    <ConnectorSVG color={theme.left} width={connectorWidth} height={qConnectorHeight} />
-                  </div>
-                ))}
-              </div>
-              <div style={{ width: `${colWidth}px` }}>
-                {renderRound(sSplit.left, spacingS, isLocked, userPicks, onPickTeam)}
-              </div>
-            </>
-          )}
+        {finals.length > 0 && (
+          <>
+            {renderConnectors(1, semiConnectorHeight, 0, theme.left || theme.neutral)}
+            {renderRoundColumn(finals, 0)}
+            {renderConnectors(1, semiConnectorHeight, 0, theme.right || theme.neutral, true)}
+          </>
+        )}
 
-          {finals.length > 0 && (
-            <>
-              <div className="flex items-center" style={{ height: `${sConnectorHeight}px` }}>
-                <ConnectorSVG color={theme.left || theme.neutral} width={connectorWidth} height={sConnectorHeight} />
-              </div>
-              <div style={{ width: `${colWidth}px` }} className="flex flex-col items-center justify-center">
-                {finals.map(match => (
-                  <div key={match.id} className="relative">
-                    {renderMatch(match, isLocked, userPicks, onPickTeam)}
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center" style={{ height: `${sConnectorHeight}px` }}>
-                <ConnectorSVG mirrored color={theme.right || theme.neutral} width={connectorWidth} height={sConnectorHeight} />
-              </div>
-            </>
-          )}
+        {sSplit.right.length > 0 && (
+          <>
+            {renderRoundColumn(sSplit.right, semiGap)}
+            {renderConnectors(sSplit.right.length, quarterConnectorHeight, semiGap, theme.right || theme.neutral, true)}
+          </>
+        )}
 
-          {semis.length > 0 && (
-            <>
-              <div style={{ width: `${colWidth}px` }}>
-                {renderRound(sSplit.right, spacingS, isLocked, userPicks, onPickTeam)}
-              </div>
-              <div className="flex flex-col justify-center" style={{ gap: `${spacingS + matchSlotHeight}px` }}>
-                {sSplit.right.map((_, i) => (
-                  <div key={i} style={{ height: `${qConnectorHeight}px` }} className="flex items-center">
-                    <ConnectorSVG mirrored color={theme.right} width={connectorWidth} height={qConnectorHeight} />
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+        {qSplit.right.length > 0 && (
+          <>
+            {renderRoundColumn(qSplit.right, quarterGap)}
+            {renderConnectors(qSplit.right.length, r16ConnectorHeight, quarterGap, theme.right || theme.neutral, true)}
+          </>
+        )}
 
-          {quarters.length > 0 && (
-            <>
-              <div style={{ width: `${colWidth}px` }}>
-                {renderRound(qSplit.right, spacingQ, isLocked, userPicks, onPickTeam)}
-              </div>
-              <div className="flex flex-col justify-center" style={{ gap: `${spacingQ + matchSlotHeight}px` }}>
-                {qSplit.right.map((_, i) => (
-                  <div key={i} style={{ height: `${r16ConnectorHeight}px` }} className="flex items-center">
-                    <ConnectorSVG mirrored color={theme.right} width={connectorWidth} height={r16ConnectorHeight} />
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          <div style={{ width: `${colWidth}px` }}>
-            {renderRound(r16Split.right, spacingR16, isLocked, userPicks, onPickTeam)}
-          </div>
-        </div>
+        {r16Split.right.length > 0 && renderRoundColumn(r16Split.right, r16Gap)}
       </div>
     </div>
   );
