@@ -134,7 +134,8 @@ const BracketView: React.FC<BracketViewProps> = ({
   const finals = matches.filter(m =>
     m.round.includes('Final') &&
     !m.round.includes('Semi') &&
-    !m.round.includes('Third Place') &&
+    !m.round.includes('Quarter') &&
+    !m.round.includes('Third') &&
     !m.round.includes('Bronze')
   );
 
