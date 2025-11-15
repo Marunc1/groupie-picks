@@ -1,15 +1,47 @@
 import { useEffect, useState } from 'react';
-import { storage } from '@/lib/storage';
+// import { storage } from '@/lib/storage'; // NU mai avem nevoie de stocarea locală
 import { LeaderboardEntry } from '@/types/tournament';
 import { Trophy, Medal, Award } from 'lucide-react';
 
+// Adresa URL completă către fișierul API pe serverul de găzduire
+const API_URL = 'https://pickems.loolishmedia.ro/api.php?action=leaderboard'; 
+
 const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  // Adăugăm stări pentru a gestiona încărcarea și erorile
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const data = storage.getLeaderboard();
-    setLeaderboard(data);
-  }, []);
+    const fetchLeaderboard = async () => {
+      try {
+        // 1. Efectuarea apelului HTTP GET către API-ul PHP
+        const response = await fetch(API_URL);
+
+        // 2. Verificarea răspunsului HTTP
+        if (!response.ok) {
+          // Dacă PHP returnează un cod de eroare (e.g., 500), aruncăm o eroare
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'A apărut o eroare la server.');
+        }
+
+        // 3. Preluarea și setarea datelor
+        const data: LeaderboardEntry[] = await response.json();
+        setLeaderboard(data);
+        
+      } catch (err) {
+        // 4. Gestionarea erorilor (de rețea sau de server)
+        console.error("Eroare la preluarea clasamentului:", err);
+        setError('Nu s-a putut încărca clasamentul. Verificați conexiunea.');
+        
+      } finally {
+        // 5. Oprim starea de încărcare
+        setIsLoading(false);
+      }
+    };
+    
+    fetchLeaderboard();
+  }, []); // [] asigură rularea doar la montare
 
   const getPositionIcon = (position: number) => {
     switch (position) {
@@ -24,6 +56,7 @@ const Leaderboard = () => {
     }
   };
 
+  // --- Secțiunea de Randare ---
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -32,11 +65,29 @@ const Leaderboard = () => {
       </div>
 
       <div className="max-w-3xl mx-auto">
-        {leaderboard.length === 0 ? (
+        {/* Afișare Stare Încărcare */}
+        {isLoading && (
+          <div className="text-center py-12 text-primary">
+            Încărcare clasament...
+          </div>
+        )}
+        
+        {/* Afișare Stare Eroare */}
+        {error && (
+          <div className="text-center py-12 text-red-500">
+            Eroare: {error}
+          </div>
+        )}
+
+        {/* Afișare Mesaj Lipsă Date */}
+        {!isLoading && !error && leaderboard.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             No entries yet. Make your picks to appear on the leaderboard!
           </div>
-        ) : (
+        )}
+        
+        {/* Afișare Clasament */}
+        {!isLoading && leaderboard.length > 0 && (
           <div className="space-y-3">
             {leaderboard.map((entry, index) => (
               <div
