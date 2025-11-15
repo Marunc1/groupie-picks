@@ -1,3 +1,4 @@
+import React from 'react';
 import { Match, UserPick } from '@/types/tournament';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -7,21 +8,29 @@ interface BracketViewProps {
   userPicks: UserPick[];
   onPickTeam: (matchId: string, teamId: string) => void;
   isLocked?: boolean;
+  theme?: {
+    left?: string;
+    right?: string;
+    neutral?: string;
+  };
 }
 
-const BracketView = ({ matches, userPicks, onPickTeam, isLocked }: BracketViewProps) => {
-  const roundOf16 = matches.filter(m => m.round.includes('Round of 16'));
-  const quarters = matches.filter(m => m.round.includes('Quarter'));
-  const semis = matches.filter(m => m.round.includes('Semi'));
-  const finals = matches.filter(m => m.round.includes('Final') && !m.round.includes('Semi'));
+const MatchBox: React.FC<{
+  match: Match;
+  isLocked: boolean;
+  userPicks: UserPick[];
+  onPickTeam: (matchId: string, teamId: string) => void;
+}> = ({ match, isLocked, userPicks, onPickTeam }) => {
+  const userPick = match.id ? userPicks.find(p => p.matchId === match.id) : undefined;
+  const showWinner = match.winner;
 
-  const renderTeam = (team: Match['team1'], match: Match, position: 'team1' | 'team2') => {
-    const userPick = userPicks.find(p => p.matchId === match.id);
-    const showWinner = match.winner;
-
+  const renderTeam = (team: Match['team1'], isTop: boolean) => {
     if (!team) {
       return (
-        <div className="p-3 bg-muted/50 rounded-sm border border-border text-muted-foreground text-sm h-10 flex items-center">
+        <div className={cn(
+          "p-2 text-xs text-muted-foreground",
+          isTop ? "border-b border-border" : ""
+        )}>
           TBD
         </div>
       );
@@ -37,141 +46,176 @@ const BracketView = ({ matches, userPicks, onPickTeam, isLocked }: BracketViewPr
         onClick={() => !isLocked && onPickTeam(match.id, team.id)}
         disabled={isLocked || !team}
         className={cn(
-          "p-3 rounded-sm border transition-all text-left w-full h-10 flex items-center",
-          "hover:border-primary/50 disabled:cursor-not-allowed",
-          isSelected && "border-primary bg-primary/10 font-semibold",
-          !isSelected && "border-border bg-background",
-          isCorrect && "border-secondary bg-secondary/10",
-          isWrong && "border-destructive bg-destructive/10",
-          isWinner && !isSelected && "border-secondary/50 bg-secondary/5"
+          "p-2 text-xs text-left w-full transition-all flex items-center justify-between",
+          "hover:bg-primary/5 disabled:cursor-not-allowed",
+          isTop ? "border-b border-border" : "",
+          isSelected && "bg-primary/10 font-semibold",
+          isCorrect && "bg-secondary/10 text-secondary",
+          isWrong && "bg-destructive/10 text-destructive",
+          isWinner && !isSelected && "bg-secondary/5"
         )}
       >
-        <div className="flex items-center justify-between w-full">
-          <span className="text-sm truncate">{team.name}</span>
-          <div className="flex-shrink-0 ml-2">
-            {isCorrect && <Check className="w-4 h-4 text-secondary" />}
-            {isWrong && <X className="w-4 h-4 text-destructive" />}
-            {isWinner && !isSelected && <Check className="w-4 h-4 text-secondary/50" />}
-          </div>
+        <span className="truncate pr-1">{team.name}</span>
+        <div className="flex-shrink-0">
+          {isCorrect && <Check className="w-3 h-3" />}
+          {isWrong && <X className="w-3 h-3" />}
+          {isWinner && !isSelected && <Check className="w-3 h-3 opacity-50" />}
         </div>
       </button>
     );
   };
 
-  const renderMatch = (match: Match, index: number, roundSize: number) => {
+  return (
+    <div className="bg-background border border-border rounded w-32 overflow-hidden hover:border-primary/30 transition-colors">
+      {renderTeam(match.team1, true)}
+      {renderTeam(match.team2, false)}
+    </div>
+  );
+};
+
+const BracketConnector: React.FC<{
+  height: number;
+  color?: string;
+  mirrored?: boolean;
+}> = ({ height, color = 'hsl(var(--border))', mirrored = false }) => {
+  const width = 30;
+  const midY = height / 2;
+  const topY = height * 0.25;
+  const bottomY = height * 0.75;
+  const midX = width / 2;
+
+  return (
+    <svg width={width} height={height} className="block">
+      {mirrored ? (
+        <>
+          <line x1={width} y1={topY} x2={midX} y2={topY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={topY} x2={midX} y2={midY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={midY} x2={midX} y2={bottomY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={bottomY} x2={width} y2={bottomY} stroke={color} strokeWidth="1.5" />
+          <line x1={0} y1={midY} x2={midX} y2={midY} stroke={color} strokeWidth="1.5" />
+        </>
+      ) : (
+        <>
+          <line x1={0} y1={topY} x2={midX} y2={topY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={topY} x2={midX} y2={midY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={midY} x2={midX} y2={bottomY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={bottomY} x2={0} y2={bottomY} stroke={color} strokeWidth="1.5" />
+          <line x1={midX} y1={midY} x2={width} y2={midY} stroke={color} strokeWidth="1.5" />
+        </>
+      )}
+    </svg>
+  );
+};
+
+const BracketView: React.FC<BracketViewProps> = ({
+  matches,
+  userPicks,
+  onPickTeam,
+  isLocked = false,
+  theme = { left: 'hsl(var(--primary))', right: 'hsl(var(--secondary))', neutral: 'hsl(var(--border))' },
+}) => {
+  const roundOf16 = matches.filter(m => m.round.includes('Round of 16'));
+  const quarters = matches.filter(m => m.round.includes('Quarter'));
+  const semis = matches.filter(m => m.round.includes('Semi'));
+  const finals = matches.filter(m =>
+    m.round.includes('Final') &&
+    !m.round.includes('Semi') &&
+    !m.round.includes('Quarter') &&
+    !m.round.includes('Third') &&
+    !m.round.includes('Bronze')
+  );
+
+  const splitHalf = <T,>(arr: T[]) => {
+    const mid = Math.ceil(arr.length / 2);
+    return {
+      left: arr.slice(0, mid),
+      right: arr.slice(mid),
+    };
+  };
+
+  const r16Split = splitHalf(roundOf16);
+  const qSplit = splitHalf(quarters);
+  const sSplit = splitHalf(semis);
+
+  const renderRoundColumn = (roundMatches: Match[], gap: number) => {
+    if (roundMatches.length === 0) return null;
     return (
-      <div className="relative flex flex-col gap-0">
-        {renderTeam(match.team1, match, 'team1')}
-        {renderTeam(match.team2, match, 'team2')}
+      <div className="flex flex-col justify-center" style={{ gap: `${gap}px` }}>
+        {roundMatches.map((match) => (
+          <MatchBox
+            key={match.id}
+            match={match}
+            isLocked={isLocked}
+            userPicks={userPicks}
+            onPickTeam={onPickTeam}
+          />
+        ))}
       </div>
     );
   };
 
-  const renderRound = (roundMatches: Match[], title: string, spacing: number) => {
-    if (roundMatches.length === 0) return null;
-
+  const renderConnectors = (count: number, height: number, gap: number, color: string, mirrored: boolean = false) => {
     return (
-      <div className="flex flex-col justify-center" style={{ gap: `${spacing}px` }}>
-        {roundMatches.map((match, index) => (
-          <div key={match.id} className="relative">
-            {renderMatch(match, index, roundMatches.length)}
+      <div className="flex flex-col justify-center" style={{ gap: `${gap}px` }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} style={{ height: `${height}px` }} className="flex items-center">
+            <BracketConnector height={height} color={color} mirrored={mirrored} />
           </div>
         ))}
       </div>
     );
   };
 
+  const matchHeight = 48;
+  const r16Gap = 10;
+  const quarterGap = matchHeight * 2 + r16Gap * 2 + 10;
+  const semiGap = matchHeight * 4 + quarterGap * 2 + 10;
+  const r16ConnectorHeight = matchHeight * 2 + r16Gap;
+  const quarterConnectorHeight = matchHeight * 4 + quarterGap + r16Gap * 2;
+  const semiConnectorHeight = matchHeight * 8 + semiGap + quarterGap * 2;
+
   return (
     <div className="w-full overflow-x-auto pb-8">
-      <div className="min-w-max">
-        {/* Round Labels */}
-        <div className="flex gap-4 mb-6">
-          {roundOf16.length > 0 && (
-            <div className="w-[220px] text-center">
-              <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Round of 16</h3>
-            </div>
-          )}
-          {quarters.length > 0 && (
-            <div className="w-[220px] text-center">
-              <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Quarter Finals</h3>
-            </div>
-          )}
-          {semis.length > 0 && (
-            <div className="w-[220px] text-center">
-              <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Semi Finals</h3>
-            </div>
-          )}
-          {finals.length > 0 && (
-            <div className="w-[220px] text-center">
-              <h3 className="text-sm font-semibold text-primary uppercase tracking-wider">Grand Final</h3>
-            </div>
-          )}
-        </div>
+      <div className="min-w-max flex items-center justify-center gap-0 p-8">
+        {r16Split.left.length > 0 && renderRoundColumn(r16Split.left, r16Gap)}
 
-        {/* Bracket */}
-        <div className="flex gap-4 items-center px-4">
-          <div className="w-[220px]">
-            {renderRound(roundOf16, 'Round of 16', 20)}
-          </div>
-          
-          {quarters.length > 0 && (
-            <>
-              <div className="flex flex-col justify-center gap-[107px]">
-                {quarters.map((_, i) => (
-                  <div key={i} className="h-[px] flex items-center">
-                    <svg width="40" height="92" className="text-border">
-                      <line x1="0" y1="23" x2="20" y2="23" stroke="currentColor" strokeWidth="2" />
-                      <line x1="0" y1="69" x2="20" y2="69" stroke="currentColor" strokeWidth="2" />
-                      <line x1="20" y1="23" x2="20" y2="69" stroke="currentColor" strokeWidth="2" />
-                      <line x1="20" y1="46" x2="40" y2="46" stroke="currentColor" strokeWidth="2" />
-                    </svg>
-                  </div>
-                ))}
-              </div>
-              <div className="w-[220px]">
-                {renderRound(quarters, 'Quarter Finals', 80)}
-              </div>
-            </>
-          )}
-          
-          {semis.length > 0 && (
-            <>
-              <div className="flex flex-col justify-center gap-[260px]">
-                {semis.map((_, i) => (
-                  <div key={i} className="h-[92px] flex items-center">
-                    <svg width="40" height="252" className="text-border">
-                      <line x1="0" y1="46" x2="20" y2="46" stroke="currentColor" strokeWidth="2" />
-                      <line x1="0" y1="206" x2="20" y2="206" stroke="currentColor" strokeWidth="2" />
-                      <line x1="20" y1="46" x2="20" y2="206" stroke="currentColor" strokeWidth="2" />
-                      <line x1="20" y1="126" x2="40" y2="126" stroke="currentColor" strokeWidth="2" />
-                    </svg>
-                  </div>
-                ))}
-              </div>
-              <div className="w-[220px]">
-                {renderRound(semis, 'Semi Finals', 240)}
-              </div>
-            </>
-          )}
-          
-          {finals.length > 0 && (
-            <>
-              <div className="flex flex-col justify-center">
-                <div className="h-[92px] flex items-center">
-                  <svg width="40" height="518" className="text-border">
-                    <line x1="0" y1="126" x2="20" y2="126" stroke="currentColor" strokeWidth="2" />
-                    <line x1="0" y1="392" x2="20" y2="392" stroke="currentColor" strokeWidth="2" />
-                    <line x1="20" y1="126" x2="20" y2="392" stroke="currentColor" strokeWidth="2" />
-                    <line x1="20" y1="259" x2="40" y2="259" stroke="currentColor" strokeWidth="2" />
-                  </svg>
-                </div>
-              </div>
-              <div className="w-[220px]">
-                {renderRound(finals, 'Grand Final', 0)}
-              </div>
-            </>
-          )}
-        </div>
+        {qSplit.left.length > 0 && (
+          <>
+            {renderConnectors(qSplit.left.length, r16ConnectorHeight, quarterGap, theme.left || theme.neutral)}
+            {renderRoundColumn(qSplit.left, quarterGap)}
+          </>
+        )}
+
+        {sSplit.left.length > 0 && (
+          <>
+            {renderConnectors(sSplit.left.length, quarterConnectorHeight, semiGap, theme.left || theme.neutral)}
+            {renderRoundColumn(sSplit.left, semiGap)}
+          </>
+        )}
+
+        {finals.length > 0 && (
+          <>
+            {renderConnectors(1, semiConnectorHeight, 0, theme.left || theme.neutral)}
+            {renderRoundColumn(finals, 0)}
+            {renderConnectors(1, semiConnectorHeight, 0, theme.right || theme.neutral, true)}
+          </>
+        )}
+
+        {sSplit.right.length > 0 && (
+          <>
+            {renderRoundColumn(sSplit.right, semiGap)}
+            {renderConnectors(sSplit.right.length, quarterConnectorHeight, semiGap, theme.right || theme.neutral, true)}
+          </>
+        )}
+
+        {qSplit.right.length > 0 && (
+          <>
+            {renderRoundColumn(qSplit.right, quarterGap)}
+            {renderConnectors(qSplit.right.length, r16ConnectorHeight, quarterGap, theme.right || theme.neutral, true)}
+          </>
+        )}
+
+        {r16Split.right.length > 0 && renderRoundColumn(r16Split.right, r16Gap)}
       </div>
     </div>
   );
