@@ -16,11 +16,19 @@ const Pickems = () => {
   const [username, setUsername] = useState('');
   const [isUsernameSet, setIsUsernameSet] = useState(false);
 
-  const { tournament } = useTournament();
-  const { matches } = useMatches(tournament?.id);
-  const { teams } = useTeams(tournament?.id);
-  const { groups, groupTeams } = useGroups(tournament?.id);
-  const { userPick, matchPicks, groupPicks, createUserPick, saveMatchPick, saveGroupPicks } = useUserPicks(username, tournament?.id);
+  const { tournament, isLoading: tournamentLoading } = useTournament();
+  const { matches, isLoading: matchesLoading } = useMatches(tournament?.id);
+  const { teams, isLoading: teamsLoading } = useTeams(tournament?.id);
+  const { groups, groupTeams, isLoading: groupsLoading } = useGroups(tournament?.id);
+  const { 
+    userPick, 
+    matchPicks, 
+    groupPicks, 
+    isLoading: userPicksLoading,
+    createUserPick, 
+    saveMatchPick, 
+    saveGroupPicks 
+  } = useUserPicks(isUsernameSet ? username : undefined, tournament?.id);
 
   useEffect(() => {
     const savedUsername = localStorage.getItem('pickems_username');
@@ -31,10 +39,10 @@ const Pickems = () => {
   }, []);
 
   useEffect(() => {
-    if (username && tournament?.id && !userPick) {
+    if (isUsernameSet && username && tournament?.id && !userPick && !userPicksLoading) {
       createUserPick({ username, tournamentId: tournament.id });
     }
-  }, [username, tournament?.id, userPick, createUserPick]);
+  }, [isUsernameSet, username, tournament?.id, userPick, userPicksLoading, createUserPick]);
 
   const handleSetUsername = () => {
     if (!username.trim()) {
@@ -114,17 +122,27 @@ const Pickems = () => {
     );
   }
 
-  if (!tournament) {
+  const isLoading = tournamentLoading || matchesLoading || teamsLoading || groupsLoading;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Se încarcă turneul...</p>
+        <p className="text-muted-foreground">Se încarcă datele...</p>
       </div>
     );
   }
 
-  const transformedMatches = matches.map(match => {
-    const team1 = teams.find(t => t.id === match.team1_id);
-    const team2 = teams.find(t => t.id === match.team2_id);
+  if (!tournament) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Niciun turneu găsit</p>
+      </div>
+    );
+  }
+
+  const transformedMatches = matches?.map(match => {
+    const team1 = teams?.find(t => t.id === match.team1_id);
+    const team2 = teams?.find(t => t.id === match.team2_id);
     return {
       id: match.id,
       team1: team1 ? { id: team1.id, name: team1.name, logo: team1.logo, seed: team1.seed } : null,
@@ -133,12 +151,12 @@ const Pickems = () => {
       round: match.round,
       bracket: 'upper' as const
     };
-  });
+  }) || [];
 
-  const transformedUserPicks = matchPicks.map(pick => ({
+  const transformedUserPicks = matchPicks?.map(pick => ({
     matchId: pick.match_id,
     teamId: pick.picked_team_id
-  }));
+  })) || [];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -164,25 +182,25 @@ const Pickems = () => {
         <TabsContent value="groups" className="mt-6">
           {tournament.groupStageEnabled ? (
             <div className="grid gap-6">
-              {groups.map(group => {
+              {groups?.map(group => {
                 const groupTeamsList = groupTeams
-                  .filter(gt => gt.group_id === group.id)
-                  .map(gt => teams.find(t => t.id === gt.team_id))
+                  ?.filter(gt => gt.group_id === group.id)
+                  .map(gt => teams?.find(t => t.id === gt.team_id))
                   .filter(Boolean)
                   .map(team => ({ 
                     id: team!.id, 
                     name: team!.name, 
                     logo: team?.logo, 
                     seed: team?.seed 
-                  }));
+                  })) || [];
                 
                 const advancingTeamIds = groupTeams
-                  .filter(gt => gt.group_id === group.id && gt.is_advancing)
-                  .map(gt => gt.team_id);
+                  ?.filter(gt => gt.group_id === group.id && gt.is_advancing)
+                  .map(gt => gt.team_id) || [];
 
                 const userGroupPick = groupPicks
-                  .filter(gp => gp.group_id === group.id)
-                  .map(gp => gp.team_id);
+                  ?.filter(gp => gp.group_id === group.id)
+                  .map(gp => gp.team_id) || [];
 
                 return (
                   <GroupPicker
