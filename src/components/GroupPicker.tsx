@@ -4,14 +4,12 @@ import { cn } from '@/lib/utils';
 
 interface GroupPickerProps {
   group: Group;
-  groupPick?: GroupPick;
-  onPickTeam: (groupId: string, teamIds: string[]) => void;
+  selectedTeams: string[];
+  onPickTeams: (groupId: string, teamIds: string[]) => void;
   isLocked?: boolean;
 }
 
-const GroupPicker = ({ group, groupPick, onPickTeam, isLocked }: GroupPickerProps) => {
-  const selectedTeams = groupPick?.selectedTeams || [];
-
+const GroupPicker = ({ group, selectedTeams, onPickTeams, isLocked }: GroupPickerProps) => {
   const handleTeamClick = (teamId: string) => {
     if (isLocked) return;
 
@@ -25,7 +23,7 @@ const GroupPicker = ({ group, groupPick, onPickTeam, isLocked }: GroupPickerProp
       newSelection = [newSelection[1], teamId];
     }
 
-    onPickTeam(group.id, newSelection);
+    onPickTeams(group.id, newSelection);
   };
 
   const isTeamCorrect = (teamId: string) => {

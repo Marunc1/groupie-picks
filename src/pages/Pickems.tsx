@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { storage } from '@/lib/storage';
-import { TournamentSettings, UserPick, GroupPick } from '@/types/tournament';
 import GroupPicker from '@/components/GroupPicker';
 import BracketView from '@/components/BracketView';
 import { Input } from '@/components/ui/input';
@@ -8,140 +6,80 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { User } from 'lucide-react';
+import { useTournament } from '@/hooks/useTournament';
+import { useMatches } from '@/hooks/useMatches';
+import { useTeams } from '@/hooks/useTeams';
+import { useGroups } from '@/hooks/useGroups';
+import { useUserPicks } from '@/hooks/useUserPicks';
 
 const Pickems = () => {
-  const [tournament, setTournament] = useState<TournamentSettings | null>(null);
-  const [userPicks, setUserPicks] = useState<UserPick[]>([]);
-  const [groupPicks, setGroupPicks] = useState<GroupPick[]>([]);
   const [username, setUsername] = useState('');
   const [isUsernameSet, setIsUsernameSet] = useState(false);
 
-  useEffect(() => {
-    const savedTournament = storage.getTournament();
-    const savedPicks = storage.getUserPicks();
-    const savedGroupPicks = storage.getGroupPicks();
-    const savedUsername = storage.getUsername();
+  const { tournament } = useTournament();
+  const { matches } = useMatches(tournament?.id);
+  const { teams } = useTeams(tournament?.id);
+  const { groups, groupTeams } = useGroups(tournament?.id);
+  const { userPick, matchPicks, groupPicks, createUserPick, saveMatchPick, saveGroupPicks } = useUserPicks(username, tournament?.id);
 
-    setTournament(savedTournament);
-    setUserPicks(savedPicks);
-    setGroupPicks(savedGroupPicks);
-    
+  useEffect(() => {
+    const savedUsername = localStorage.getItem('pickems_username');
     if (savedUsername) {
       setUsername(savedUsername);
       setIsUsernameSet(true);
     }
-
-    // Update leaderboard when picks change
-    if (savedTournament && savedUsername) {
-      updateLeaderboard(savedTournament, savedPicks, savedGroupPicks, savedUsername);
-    }
   }, []);
 
-  const updateLeaderboard = (
-    tournament: TournamentSettings,
-    picks: UserPick[],
-    gPicks: GroupPick[],
-    username: string
-  ) => {
-    let points = 0;
-    let correctPicks = 0;
-
-    // Calculate group picks points
-    gPicks.forEach(pick => {
-      const group = tournament.groups.find(g => g.id === pick.groupId);
-      if (group?.advancingTeams) {
-        pick.selectedTeams.forEach(teamId => {
-          if (group.advancingTeams?.includes(teamId)) {
-            points += 5;
-            correctPicks++;
-          }
-        });
-      }
-    });
-
-    // Calculate bracket picks points
-    picks.forEach(pick => {
-      const match = tournament.matches.find(m => m.id === pick.matchId);
-      if (match?.winner) {
-        if (pick.teamId === match.winner) {
-          const roundPoints = {
-            'Round of 16': 10,
-            'Quarter': 20,
-            'Semi': 30,
-            'Final': 50,
-          };
-          
-          const matchPoints = Object.entries(roundPoints).find(([key]) => 
-            match.round.includes(key)
-          )?.[1] || 10;
-          
-          points += matchPoints;
-          correctPicks++;
-        }
-      }
-    });
-
-    storage.updateLeaderboard(username, points, correctPicks);
-  };
+  useEffect(() => {
+    if (username && tournament?.id && !userPick) {
+      createUserPick({ username, tournamentId: tournament.id });
+    }
+  }, [username, tournament?.id, userPick, createUserPick]);
 
   const handleSetUsername = () => {
     if (!username.trim()) {
-      toast.error('Please enter a username');
+      toast.error('Introdu un nume de utilizator');
       return;
     }
-    storage.saveUsername(username);
+    localStorage.setItem('pickems_username', username);
     setIsUsernameSet(true);
-    toast.success('Username saved!');
+    toast.success('Nume salvat!');
   };
 
   const handlePickTeam = (matchId: string, teamId: string) => {
-    if (tournament?.knockoutStageLocked) {
-      toast.error('Knockout stage is locked!');
+    if (tournament?.knockout_stage_locked) {
+      toast.error('Etapa eliminatorie este blocată!');
       return;
     }
 
-    const newPicks = [...userPicks];
-    const existingPickIndex = newPicks.findIndex(p => p.matchId === matchId);
-
-    if (existingPickIndex >= 0) {
-      newPicks[existingPickIndex].teamId = teamId;
-    } else {
-      newPicks.push({ matchId, teamId });
+    if (!userPick?.id) {
+      toast.error('Setează mai întâi un nume de utilizator!');
+      return;
     }
 
-    setUserPicks(newPicks);
-    storage.saveUserPicks(newPicks);
-    
-    if (tournament) {
-      updateLeaderboard(tournament, newPicks, groupPicks, username);
-    }
-    
-    toast.success('Pick saved!');
+    saveMatchPick({ 
+      userPickId: userPick.id, 
+      matchId, 
+      teamId 
+    });
   };
 
   const handleGroupPick = (groupId: string, teamIds: string[]) => {
-    if (tournament?.groupStageLocked) {
-      toast.error('Group stage is locked!');
+    if (tournament?.group_stage_locked) {
+      toast.error('Etapa grupelor este blocată!');
       return;
     }
 
-    const newPicks = [...groupPicks];
-    const existingPickIndex = newPicks.findIndex(p => p.groupId === groupId);
-
-    if (existingPickIndex >= 0) {
-      newPicks[existingPickIndex].selectedTeams = teamIds;
-    } else {
-      newPicks.push({ groupId, selectedTeams: teamIds });
+    if (!userPick?.id) {
+      toast.error('Setează mai întâi un nume de utilizator!');
+      return;
     }
 
-    setGroupPicks(newPicks);
-    storage.saveGroupPicks(newPicks);
-    
-    if (tournament) {
-      updateLeaderboard(tournament, userPicks, newPicks, username);
-    }
-    
-    toast.success('Group pick saved!');
+    saveGroupPicks({
+      userPickId: userPick.id,
+      groupId,
+      teamIds
+    });
   };
 
   if (!isUsernameSet) {
@@ -154,19 +92,20 @@ const Pickems = () => {
                 <User className="w-8 h-8 text-primary" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-center mb-2">Welcome!</h2>
+            <h2 className="text-2xl font-bold text-center mb-2">Bun venit!</h2>
             <p className="text-muted-foreground text-center mb-6">
-              Enter your username to start making picks
+              Introdu numele tău pentru a începe să faci predicții
             </p>
             <div className="space-y-4">
               <Input
-                placeholder="Your username"
+                placeholder="Numele tău"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSetUsername()}
+                className="text-center"
               />
               <Button onClick={handleSetUsername} className="w-full">
-                Continue
+                Continuă
               </Button>
             </div>
           </div>
@@ -175,94 +114,114 @@ const Pickems = () => {
     );
   }
 
-  if (!tournament || (tournament.groups.length === 0 && tournament.matches.length === 0)) {
+  if (!tournament) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
-        <p className="text-muted-foreground">No tournament configured yet. Check admin panel.</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Se încarcă turneul...</p>
       </div>
     );
   }
 
-  const showGroups = tournament.groupStageEnabled && tournament.groups.length > 0;
-  const showKnockout = tournament.knockoutStageEnabled && tournament.matches.length > 0;
+  const transformedMatches = matches.map(match => {
+    const team1 = teams.find(t => t.id === match.team1_id);
+    const team2 = teams.find(t => t.id === match.team2_id);
+    return {
+      id: match.id,
+      team1: team1 ? { id: team1.id, name: team1.name, logo: team1.logo, seed: team1.seed } : null,
+      team2: team2 ? { id: team2.id, name: team2.name, logo: team2.logo, seed: team2.seed } : null,
+      winner: match.winner_id,
+      round: match.round,
+      bracket: 'upper' as const
+    };
+  });
+
+  const transformedUserPicks = matchPicks.map(pick => ({
+    matchId: pick.match_id,
+    teamId: pick.picked_team_id
+  }));
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Make Your Picks</h1>
-            <p className="text-muted-foreground">Logged in as: {username}</p>
-          </div>
-          <div className="flex gap-2">
-            {tournament.groupStageLocked && showGroups && (
-              <div className="px-4 py-2 rounded-lg bg-primary/20 border border-primary">
-                <span className="text-primary font-semibold">🔒 Groups Locked</span>
-              </div>
-            )}
-            {tournament.knockoutStageLocked && showKnockout && (
-              <div className="px-4 py-2 rounded-lg bg-primary/20 border border-primary">
-                <span className="text-primary font-semibold">🔒 Knockout Locked</span>
-              </div>
-            )}
+            <h1 className="text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+              Fă-ți Predicțiile
+            </h1>
+            <p className="text-muted-foreground">
+              Conectat ca: <span className="font-semibold text-foreground">{username}</span>
+            </p>
           </div>
         </div>
       </div>
 
-      {showGroups && showKnockout ? (
-        <Tabs defaultValue="groups" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="groups">Group Stage</TabsTrigger>
-            <TabsTrigger value="bracket">Knockout Stage</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="groups">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {tournament.groups.map((group) => (
-                <GroupPicker
-                  key={group.id}
-                  group={group}
-                  groupPick={groupPicks.find(p => p.groupId === group.id)}
-                  onPickTeam={handleGroupPick}
-                  isLocked={tournament.groupStageLocked}
-                />
-              ))}
+      <Tabs defaultValue="bracket" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="groups">Etapa Grupelor</TabsTrigger>
+          <TabsTrigger value="bracket">Etapa Eliminatorie</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="groups" className="mt-6">
+          {tournament.group_stage_enabled ? (
+            <div className="grid gap-6">
+              {groups.map(group => {
+                const groupTeamsList = groupTeams
+                  .filter(gt => gt.group_id === group.id)
+                  .map(gt => teams.find(t => t.id === gt.team_id))
+                  .filter(Boolean)
+                  .map(team => ({ 
+                    id: team!.id, 
+                    name: team!.name, 
+                    logo: team?.logo, 
+                    seed: team?.seed 
+                  }));
+                
+                const advancingTeamIds = groupTeams
+                  .filter(gt => gt.group_id === group.id && gt.is_advancing)
+                  .map(gt => gt.team_id);
+
+                const userGroupPick = groupPicks
+                  .filter(gp => gp.group_id === group.id)
+                  .map(gp => gp.team_id);
+
+                return (
+                  <GroupPicker
+                    key={group.id}
+                    group={{
+                      id: group.id,
+                      name: group.name,
+                      teams: groupTeamsList,
+                      advancingTeams: advancingTeamIds
+                    }}
+                    onPickTeams={handleGroupPick}
+                    selectedTeams={userGroupPick}
+                    isLocked={tournament.group_stage_locked}
+                  />
+                );
+              })}
             </div>
-          </TabsContent>
-          
-          <TabsContent value="bracket">
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Etapa grupelor nu este activată</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="bracket" className="mt-6">
+          {tournament.knockout_stage_enabled ? (
             <BracketView
-              matches={tournament.matches}
-              userPicks={userPicks}
+              matches={transformedMatches}
+              userPicks={transformedUserPicks}
               onPickTeam={handlePickTeam}
-              isLocked={tournament.knockoutStageLocked}
+              isLocked={tournament.knockout_stage_locked}
             />
-          </TabsContent>
-        </Tabs>
-      ) : showGroups ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {tournament.groups.map((group) => (
-            <GroupPicker
-              key={group.id}
-              group={group}
-              groupPick={groupPicks.find(p => p.groupId === group.id)}
-              onPickTeam={handleGroupPick}
-              isLocked={tournament.groupStageLocked}
-            />
-          ))}
-        </div>
-      ) : showKnockout ? (
-        <BracketView
-          matches={tournament.matches}
-          userPicks={userPicks}
-          onPickTeam={handlePickTeam}
-          isLocked={tournament.knockoutStageLocked}
-        />
-      ) : (
-        <div className="text-center text-muted-foreground py-12">
-          <p>No stages are currently enabled. Contact admin.</p>
-        </div>
-      )}
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Etapa eliminatorie nu este activată</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
