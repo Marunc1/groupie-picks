@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // --- MOCK DEPENDENCIES START/IMPORTS (Păstrați-le pe cele originale) ---
