@@ -47,7 +47,7 @@ const Pickems = () => {
   };
 
   const handlePickTeam = (matchId: string, teamId: string) => {
-    if (tournament?.knockout_stage_locked) {
+    if (tournament?.knockoutStageLocked) {
       toast.error('Etapa eliminatorie este blocată!');
       return;
     }
@@ -65,7 +65,7 @@ const Pickems = () => {
   };
 
   const handleGroupPick = (groupId: string, teamIds: string[]) => {
-    if (tournament?.group_stage_locked) {
+    if (tournament?.groupStageLocked) {
       toast.error('Etapa grupelor este blocată!');
       return;
     }
@@ -162,7 +162,7 @@ const Pickems = () => {
         </TabsList>
 
         <TabsContent value="groups" className="mt-6">
-          {tournament.group_stage_enabled ? (
+          {tournament.groupStageEnabled ? (
             <div className="grid gap-6">
               {groups.map(group => {
                 const groupTeamsList = groupTeams
@@ -195,7 +195,7 @@ const Pickems = () => {
                     }}
                     onPickTeams={handleGroupPick}
                     selectedTeams={userGroupPick}
-                    isLocked={tournament.group_stage_locked}
+                    isLocked={tournament.groupStageLocked}
                   />
                 );
               })}
@@ -208,12 +208,12 @@ const Pickems = () => {
         </TabsContent>
 
         <TabsContent value="bracket" className="mt-6">
-          {tournament.knockout_stage_enabled ? (
+          {tournament.knockoutStageEnabled ? (
             <BracketView
               matches={transformedMatches}
               userPicks={transformedUserPicks}
               onPickTeam={handlePickTeam}
-              isLocked={tournament.knockout_stage_locked}
+              isLocked={tournament.knockoutStageLocked}
             />
           ) : (
             <div className="text-center py-12">
